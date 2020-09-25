@@ -1,0 +1,173 @@
+\documentclass[11pt,a4paper,oneside,english]{extarticle}
+\input{preamble}
+\makeatletter
+\fancyhead[LO]{\@title}
+\makeatother
+
+\title{Approximate random variables: A brief guide for practitioners}
+\author{\href{mailto:oliver.sheridan-methven@maths.ox.ac.uk}{Oliver Sheridan-Methven}%
+\thanks{\href{mailto:oliver.sheridan-methven@maths.ox.ac.uk}%
+{\texttt{oliver.sheridan-methven@maths.ox.ac.uk}}}}
+\date{\datedayname\ \nth{\number\day} \monthname\  \number\year}
+
+\begin{document}
+\linenumbers
+\maketitle
+\pagenumbering{arabic}
+
+\begin{abstract}
+We introduce the idea of \emph{approximate random variables} and discuss when they are useful. We provide code bundles in Python and C which demonstrate various implementations and use-cases, showing key results, and how to obtain these yourself using the code provided.  
+\end{abstract}
+
+\tableofcontents
+
+\section{Introduction}
+
+This report is intended to be a relatively light introduction to approximate random variables, designed primarily for an industry practitioner, but also applicable to scientists who want to achieve better code performance. In this introduction, we will give a gentle introduction to random numbers and approximate random variables, and discuss one of their major areas of application. We will give a light discussion of what's going on from a mathematical perspective, and provide code demonstrating how to implement these ideas. Most of the code be written using Python in an easy to follow manner (not particularly focused on performance), and where appropriate we will also provide some high performance code written in C. We encourage readers to use either the code provided as is, or adapt it to their own needs as appropriate. The code largely demonstrative, so we make no guarantees about its performance or correctness. 
+
+\subsection{Where can I learn more?}
+\label{sec:where_can_i_learn_more}
+
+For people who are more comfortable with maths and want to know more, there are several other sources of reference material available, of various degrees of technicality. From easiest to hardest there is:
+\begin{itemize}
+\item \emph{High-performance low-precision vectorised arithmetic and its applications}, Oliver Sheridan-Methven, 2020, 2~pages. This is an extremely brief overview of my research, giving a light overview of the core idea and some key findings, aimed at a very general reader with little technical knowledge. 
+
+\item \emph{High-performance low-precision vectorised arithmetic and its applications}, Oliver Sheridan-Methven, 2020, 8~pages. This is a very brief overview of my research, going into some more detail than the 2~page version. This is aimed at those with a bit more technical knowledge. 
+
+\item \emph{Analysis of nested multilevel Monte Carlo using approximate Normal random variables}, Mike Giles and Oliver Sheridan-Methven, 2020,  approximately 25 pages. This is a journal article currently in preparation and due to be released very soon. This is aimed at a technical reader, and goes into depth with the main technical idea of our research and how to apply it, and is suitable for readers with a science degree.
+
+\item \emph{Nested multilevel Monte Carlo methods and a modified Euler-Maruyama scheme utilising approximate Gaussian random variables suitable for vectorised hardware and low-precisions}, Oliver Sheridan-Methven, 2020, 250~pages. This is my PhD thesis, and goes into all the technical mathematical details surrounding these ideas. This is not a particularly light, easy, nor entertaining read, but is likely better suited as a manual for anyone worried about the technical consequences of switching to approximate random variables. 
+\end{itemize}
+
+
+\subsection{What are random variables?}
+
+Random numbers are part of everyday life, whether rolling dice, reading stock prices, or even sending encrypted messages, random numbers are a part of all of these. As random numbers occur so frequently in the world around us, they also play a central role in various branches of science and mathematics. Usually, when some random quantity appears is part of a scientific equation or mathematical formula, its given the more formal technical name of a being a \emph{random variable}, which is the name we'll use going forward. Studying how random variables behave is central to many branches of science, and has applications in gambling, finance, computer simulations, weather prediction, security and encryption, artificial intelligence, etc., the list goes on and on.  
+
+Computers often need random numbers, either for running simulations or encrypting data. However, computers don't behave randomly, and follow a very strict set of rules and instructions. So for a computer to spit out a sequence random numbers, it follows a very long and complicated set of steps, such that the numbers it spits out, while technically not random, appear random enough for most purposes. In fact, producing high quality random numbers can be a time consuming task for a computer.
+
+The problem is made even harder when we consider that there are different varieties of random variables. In science, we say a given variety of random variables follows a \emph{distribution}, which encompasses a particular style of random numbers. Some of these you are likely familiar with and already have names, where some common distributions include:
+
+\begin{itemize}
+\item The Bernoulli distribution (e.g.\ a coin toss).
+\item The discrete uniform distribution (e.g.\ the roll of a die).
+\item The continuous uniform distribution (e.g.\ an individual's height percentile).
+\item The Poisson distribution (e.g.\ lifetime of a lightbulb). 
+\item The Gaussian distribution (e.g.\ average height of adults).
+\end{itemize}
+
+Computers by default are usually only able to produce the uniform distributions, and there are various methods to get other more complicated distributions from these simpler ones. Amongst these methods, one which is particularly robust and versatile is known as \emph{the inverse transform method}.
+
+\subsubsection{The inverse transform method}
+
+For some distribution of interest, let's suppose we know where the percentiles of the distribution lie, e.g. 50\% of the values are below 0, 70\% are below 1, 90\% are below 2, 99\% are below 3, 99.99\% are below  4, etc. We can easily sample a uniform distribution, but how can we sample from this more interesting distribution? The way the inverse transform method works is surprisingly simple. Sample a uniform random variable, giving a number in 0--100, treat this as a percentile, and see what value of the distribution this percentile corresponds to. The number corresponding to this particular percentile is a random variable which exactly follows the desired distribution. There are only two things you need for this: access to uniform random numbers (which almost all computers have), and a formula for the percentiles. Repeating this for several uniformly distributed random variables results produces random variables from the desired distribution, where a simple demonstration is shown in \Cref{fig:inverse_cdf_transformation_method_schematic_simplified}.
+
+\begin{figure}[htb]
+\centering
+\includegraphics[width=0.7\linewidth, clip=true, trim={5mm, 2mm, 5mm, 5mm}]{inverse_cdf_transformation_method_schematic_simplified}
+\caption[The inverse transform method]{The inverse transform method produces random variables following a desired pattern.}
+\label{fig:inverse_cdf_transformation_method_schematic_simplified}
+\end{figure}
+
+The technical name for the expression which takes a percentile and determines what value of a random variable this corresponds to is \emph{the inverse cumulative distribution function}, sometimes called the inverse CDF or the percentage point function. Most computers and programming languages have access to these functions for some of the most popular distributions. 
+
+\subsection{What are approximate random variables?}
+\label{sec:what_are_approximate_random_variables}
+
+So far we have painted a trouble free picture for producing random variables from whatever distribution interests by using the inverse transform method. But suppose we have an application, such as a computer simulation, which requires lots of random variables from a distribution. As an example, it is not uncommon for financial simulations of stock markets to use anywhere from millions to trillions of random numbers to predict the value of various financial products. If this is the case, then we want to process these random numbers as quick as possible. Unfortunately, while the inverse transform method is versatile, if you do it exactly, it can be very slow and struggle to perform well on the latest hardware. This is where our research proposes the following idea: don't do it exactly, do it approximately. 
+
+To see where we make our approximations, lets take a very important and ubiquitous distribution known as the Gaussian distribution, which is sometimes called the Normal distribution or the bell curve. The Gaussian's inverse cumulative distribution function is plotted in \Cref{fig:inverse_cdf_function_tails_simplified},
+where we indicating several random positions the function might evaluate. Most of the inputs land near the centre of the function, where it's nearly a straight line and easy to evaluate. However, sometimes values land near the edges, in the more difficult shaded region where the function shoots off the edges of \Cref{fig:inverse_cdf_function_tails_simplified}, and is much harder to evaluate. While these difficult scenarios are infrequent, the greater the degree of parallelisation, the more certain it is that such values are unavoidable. It is these types of edge values which contaminate an otherwise easy calculation, leading to a loss in performance. 
+
+\begin{figure}[htb]
+\centering
+\begin{subfigure}[t]{0.45\linewidth}
+\centering
+\includegraphics[width=\linewidth]{inverse_cdf_function_tails_simplified}
+\begin{minipage}[t]{0.9\linewidth}
+\caption{The inverse Gaussian cumulative distribution function, and several possible random inputs (\CIRCLE). The more difficult regions are shaded, where some random inputs will unfortunately land ({\color{red}\CIRCLE})}
+\label{fig:inverse_cdf_function_tails_simplified}
+\end{minipage}
+\end{subfigure}%
+~
+\begin{subfigure}[t]{0.45\linewidth}
+\centering
+\includegraphics[width=\linewidth]{inverse_cdf_uniform_discretisation_unshaded_simplified}
+\begin{minipage}[t]{0.9\linewidth}
+\caption{An example approximation of the exact function. The approximation is several flat lines of equal widths.}
+\label{fig:inverse_cdf_uniform_discretisation_unshaded_simplified}
+\end{minipage}
+\end{subfigure}
+\caption{The Gaussian's inverse cumulative distribution function and an approximation.}
+\label{fig:gaussian_inverse_cdf}
+\end{figure}
+
+
+To remedy the difficult edge cases, our research proposes introducing an approximation to the exact inverse cumulative distribution function. The approximation is designed to tackle the edge cases as easily as the central ones, and being fast irrespective of what's encountered. One example we proposed and studied was approximating the function by a series of flat lines, where an example is shown in \Cref{fig:inverse_cdf_uniform_discretisation_unshaded_simplified}. 
+
+In our experiments, we pitted various exact implementations (some proprietary), against our approximations. Although inexact, our approximations produced random variables in a fraction of the time it takes the exact functions. The random variables produced don't exactly follow the desired distribution, but instead something very similar. When the random variables are produced  using an approximation, we call them \emph{approximate random variables}. In our research, we study the error introduced from using these instead of the exact ones. Not only can we quantify how they affect the answer, we developed a mathematical approach to counteract their error. This means we can reap the benefits of the faster speed, without losing any accuracy, getting the best of both worlds. 
+
+\subsection{When would I use approximate random variables?}
+
+In our research we investigated and analysed the consequences of using approximate random variables in the context of running computer simulations. This is extremely common in finance, and also used in weather forecasting. As we mentioned, various other applications use random numbers and could likely benefit from using approximate random numbers, although there remains work to be done to investigate and analyse all of the remaining use-cases.
+
+One particularly prolific scientific method is known as \emph{Monte Carlo}, and it heavily used for financial simulations, and requires vast quantities of random numbers, usually from the Gaussian distribution. The Monte Carlo method can be described as: run lots of simulations of whatever is of interest, compute the average of what you see, and that's approximately the answer. The more simulations you run the more accurate your answer is. For most people, computing averages is easy, but how does someone ``simulate''? Running a simulation is asking a computer to do the following: given where something is now, and knowing how it behaves, guess where it will be in the future? When we say we know how the system behaves, it means we have an expression which accurately describes where it will evolve. This expression though is only accurate at predicting a tiny bit into the future. To predict far into the future, one method is to split this up into lots of smaller intermediate predictions. We then predict from one step to the next, one after another, until you're at the end. 
+
+
+The simplest method of simulating something step-by-step is known as the \emph{Euler scheme}, and if the evolution is subject to random influences it's the \emph{Euler-Maruyama scheme}. There are two factors influencing the evolution: one isn't random, and the other is (e.g.~traders buying and selling stocks randomly influences their price). To simulate the random bit we need a random number, and the Euler-Maruyama scheme needs them from a Gaussian distribution. Some example Euler-Maruyama simulations are shown in \Cref{fig:example_simulation}.
+
+\begin{figure}[htb]
+\centering
+\includegraphics[width=0.7\linewidth]{example_simulation}
+\caption{A non-random process (\rule[0.2em]{1.5em}{2pt}), and three Euler-Maruyama simulations ({\color{red}\rule[0.2em]{1.5em}{2pt}}).}
+\label{fig:example_simulation}
+\end{figure}
+
+The Euler-Maruyama scheme is simple, a robust problem solver, and there's not much that it struggles with, so why tamper with it? One shortcoming is that at each step it requires a random number from the Gaussian distribution. Unfortunately, this is usually the most expensive bit. To give the scheme the random numbers it needs quicker, we propose swapping them for our approximate random numbers. 
+
+
+Modifying the Euler-Maruyama scheme to substitute exact random numbers with approximate ones largely alleviates the bottleneck.  We can now run simulations much faster, improving the accuracy of any Monte Carlo estimate which uses the Euler-Maruyama scheme to produce the simulations. However, we cannot overlook that we compromised the quality of our simulations, and this will introducing some error into our answer. Is this significant though, or even noticeable? In our research, we've shown that the error introduced is limited in size by the error arising from approximating the Gaussian distribution. So to reduce the resulting error to an acceptable level, it's sufficient to just increase the fidelity of our approximation.
+
+\subsection{How can I get started using them?}
+
+All you need to get started using approximate random variables is an approximation and a problem to solve. In the code provided we will give some examples of approximating the Gaussian distribution, where we've taken some time and effort to ensure our approximations are fast. We also deploy these on some example problems to give a demonstration of how to use these ideas. Before using approximate random variables in your own setting, we encourage you go through some of the demonstrations provided to give a better idea of how to incorporate and adapt them as necessary into your own problem. We also show how one of our approximations to the Gaussian distribution can be adapted to approximate another distribution, and we expect our approximations can be used as templates for approximating several other distributions. 
+
+Approximate random variables are as their name suggests: approximate. Switching to approximate random variables is easy, and can gain you huge amounts of speed. Unfortunately, swapping the exact random variables for the approximate ones and doing nothing else, while easy to code up, will introduce some error. However, with a little extra effort, by utilising a technique known as \emph{multilevel Monte Carlo}, you can counteract this error without compromising speed, and obtain the best of both worlds. This can be a little technical, and we refer a reader interested in the technicalities of the method to some of the additional material mentioned in \Cref{sec:where_can_i_learn_more}.
+
+
+\subsection{How do I run these demonstrations?}
+
+The demonstrations we provide will mostly be written in Python, and a few higher performance versions will be in C. For the Python code, we will be using Python~2, although it should all be easily portable to Python~3 with minimal modification. The Python files can either be run from a Python IDLE, or from the command line, whichever is easier. We assume a Unix or GNU/Linux based operating system. The C files will come with their own makefiles, and will usually assume access to the \texttt{gcc} compiler. Some of the C programs are not hardware agnostic, and will require altering the makefiles in places. For some applications, we may be comparing performance against \intel or \nag libraries, and assessing performance on \intel, \arm, or even \nvidia hardware. Thus will assume the user has access to:
+\begin{itemize}
+\item The GNU scientific library (GLS) and the \texttt{gcc} compiler.
+\item The \intel maths kernel library (MKL), the vector statistics library (VSL), and the \texttt{icc} compiler. 
+\item The \nag library. 
+\item The \arm \texttt{armclang} compiler.
+\item The \nvidia \texttt{nvcc} compiler.
+\end{itemize} 
+Similarly, we will assume access to appropriate hardware from either \intel, \arm, or \nvidia where appropriate. 
+
+We will try an keep the python packages used to a minimum, although some of the notable packages which are used within our code include: \texttt{numpy}, \texttt{pandas}, \texttt{scipy}, \texttt{mpmath}, \texttt{matplotlib}, etc. 
+
+\section{Piecewise constant approximations}
+
+We mentioned earlier in \Cref{sec:what_are_approximate_random_variables} an approximation to the Gaussian's inverse cumulative distribution function which was comprised of a series of flat lines of equal width. The mathematical name for this approximation is a \emph{piecewise constant function} which uses \emph{equipartitioned intervals}, although we will just abbreviate this as the piecewise constant function. To construct the approximation, we first have to decide, how many intervals do we need, and what value should be use as the constant for each interval. 
+
+The number of intervals is the easy bit, so let's say we have $ N $ of them, where in most of our approximations we found $ N = 1028 $ to be sufficiently high to obtain a reasonable fidelity approximation. As for what value to use, a sensible choice is whatever you would expect to get from the exact function. The exact inverse cumulative distribution function for the Gaussian distribution is usually denoted $ \Phi^{-1} $. Denoting the start and end of a particular interval as $ a $ and $ b $ respectively, where $ a < b $, the value used for a particular interval is
+\begin{equation}
+\int_a^b \Phi^{-1}(x) \dd{x} \equiv \int_{\Phi(a)}^{\Phi(b)} \dfrac{z}{\sqrt{2\pi}} \exp(-\dfrac{z^2}{2}) \dd{z}.
+\end{equation}
+Both these integrals are equivalent to one another, where $ \Phi $ is the Gaussian's cumulative distribution function (i.e.~not the \emph{inverse} CDF). Both are easy for a computer to calculate, where the second is sometimes more convenient for intervals touching the edge. 
+
+\section{Piecewise polynomial approximations}
+
+There are various measures of the error, including the worse case error or the average case error. 
+For Monte Carlo applications, we used a variant called \emph{the mean squared error}, known mathematically as \emph{the $ L^2 $-error}.
+
+\section{The Milstein scheme}
+
+\section{The non-central $ \chi^2 $-distribution}
+
+\section{Comparing against exact library implementations}
+
+\end{document}
