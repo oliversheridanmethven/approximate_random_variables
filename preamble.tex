@@ -1,0 +1,708 @@
+\usepackage[export]{adjustbox} % Nice alternative to minipage.
+\usepackage{afterpage} % To give the title page its own geometry.
+\usepackage[boxed,vlined,linesnumbered,resetcount,algosection]{algorithm2e} % For writing nice algorithms. 
+\usepackage{amsmath} % Nice maths symbols.
+\usepackage{amssymb} % Nice variable symbols.
+\usepackage{amsthm} % Allows for nice definitions of theorem environments. 
+\usepackage{array} % Allow for custom column widths in tables.
+\usepackage{ltablex} % For long tables spanning multiple pages. % Must be before ARYDSHLN package!
+\keepXColumns % Keeps the X column
+\usepackage{arydshln} % Dashed lines using \hdashline \cdashline
+%\usepackage[contents={}]{background} % Letting me add background overlays. 
+\usepackage{bbm} % Gives Blackboard fonts. cf dsfont.
+\usepackage{bm} % Bold math symbols.
+\usepackage{calc} % Calculates widths of words. 
+\usepackage{chngcntr} % Changing counters, e.g. with footnotes.
+\usepackage{comment} % Allows large comment environments.
+\usepackage{datetime} % For some  useful date time manipulation
+\usepackage{datenumber}
+\usepackage[]{draftwatermark} % Gives a draft overlay. Use options [nostamp] or [final].
+\usepackage{dsfont} % Nicer blackboard fonts. use \mathds{...}
+\usepackage{emptypage} % Empty pages have no headers and footers.
+\usepackage{enumitem} % Nice listing options in itemize and enumerate.
+\usepackage{esdiff} % Gives nice differential operators.
+\usepackage{esvect} % Gives nice vector arrows.
+\usepackage{etoolbox}
+\usepackage{fancyhdr} % Nice headers.
+\usepackage{fancyvrb} % Better verbatim, and verb|| allowed in footnotes. 
+\usepackage{listings} % The listings package for code. %% Needs to be loaded before float. 
+\usepackage{float} % Nice figure placement.
+\usepackage[T1]{fontenc} % Nice range of text characters and accents.
+\usepackage[bottom]{footmisc} % Nice footnote formatting.
+\usepackage{graphicx} % Include figures.
+\usepackage[notquote]{hanging} % For indenting later lines in a paragraph. USE the 'noquote' option else the `'` is overwritten, and breaks in maths mode!
+\usepackage{ifoddpage} % Checks for odd or even page.
+\usepackage{imakeidx} % Makes the index.
+\usepackage{indentfirst} % Indents the first paragraph.
+\usepackage{letltxmacro} % For defining a nice SQRT symbol.
+\usepackage[mathlines]{lineno} % For numbering lines.
+\usepackage{lipsum} % Useful for adding jargon.
+\usepackage{lmodern} % Load a font with all the characters
+\usepackage{makecell} % Break table headers with multiline entries.
+\usepackage{marginnote} % For nice margin notes.
+\usepackage{mathtools} % Gives the colon equals symbol.
+\usepackage[framed,numbered,autolinebreaks,useliterate]{mcode} % Inports Listings package ideal for MATLAB.
+\usepackage[framemethod=tikz]{mdframed} % Gives nices boxed and sidesrules.
+\usepackage{mleftright} % For better left and right delimiters.
+\usepackage{multirow} % Nice table cells spanning many rows.
+\usepackage{multicol} % If I want to use multiple columns.
+\usepackage{nameref}
+\usepackage[numbers, sort&compress]{natbib} % Nice references.
+\usepackage{nicefrac} % Gives nice fractions for superscripts.
+\usepackage{nomencl} % Gives a symbol nomenclature. 
+\usepackage[super]{nth} % Gives nice ordinal superscripts, eg 1st, 2nd, etc.
+\usepackage{pifont} % For the check and cross marks
+\usepackage{physics} % Nice partial derivatives and BRAKET notation.
+\usepackage{ragged2e} % For nice allignment.
+%\usepackage[norefs]{refcheck} % Can show any unused references.
+\usepackage{romannum} % Nice typing for roman numerals.
+\usepackage{rotating} % For sideways figures.
+\usepackage[scr,scaled=1.1]{rsfso} % Gives Script fonts which are not so slanted. 
+\usepackage{scalerel} % Allows the scaling of symbols. 
+\usepackage{setspace} % Ideal for increasing line spacing. E.g.  \doublespacing
+\usepackage[binary-units=true]{siunitx} % Nice formating of units.
+\usepackage{sidenotes} % Nice margin figures and margin tables. 
+\usepackage{subcaption} % Side by side figures.
+\usepackage{thmtools}
+\usepackage{tikz} % Nice diagrams.
+\usepackage{titling} % Gives a bit of extra control around maketitle. 
+\usepackage{tocbasic} % For better TOC alignment
+\usepackage[nottoc]{tocbibind} % Gives nices Table of Contents
+\usepackage[textsize=footnotesize]{todonotes} % A nice TODO list. [disable] to supress.
+\usepackage{transparent} % Allows for transparent text. 
+\usepackage[normalem]{ulem} % For striked through text.
+\usepackage[hyphens]{url} % Allows urls to break on hyphens
+\usepackage{usebib} % For citing a paper's title.
+%\usepackage[table]{xcolor} % This is useful for making greyed table cells, nice for headers. Known preamble placement issues.
+\usepackage{wasysym} % Gives some nice misc symbols, such as markers.
+\usepackage{wrapfig}
+\usepackage{xifthen}% Provides \isempty test.
+\usepackage{xparse} % Gives \NewDocumentEnvironment which has nice optional argument handling.
+\usepackage{xspace} % Gives nice spacing for commands.
+%%%% Generally HYPERREF should be imported last. %%%%
+\usepackage[colorlinks=true,linkcolor=black,urlcolor=black,citecolor=black,anchorcolor=black,breaklinks]{hyperref} % Colour links.
+%%%% Should be loaded after hyperref. %%%%
+\usepackage{cleveref} % Gives smart referencing. %% After Hyperref
+\usepackage[margin=10pt,font=small,labelfont=bf,labelsep=endash,figurewithin=section,tablewithin=section]{caption} % Caption figures and tables nicely. %% After cleveref.
+\usepackage[top=20mm,bottom=20mm,left=20mm, right=30mm, heightrounded, marginparwidth=24mm,  marginparsep=3mm, headsep=10mm]{geometry} % Use nice margins. Does give a small change in the default page margins. 
+%[left=60mm,right=26mm,top=30mm,bottom=29mm, heightrounded, marginparwidth=41mm, marginparsep=8mm, headsep=10mm]
+
+
+% Getting SI options setup.
+\sisetup{range-phrase=--, range-units=single}
+
+
+% Ensures subsubsections are numbered.
+\setcounter{secnumdepth}{3}
+
+% Makes math bold in headers and titles. 
+\makeatletter
+\g@addto@macro\bfseries{\boldmath}
+\makeatother
+
+\makeindex
+
+\makenomenclature
+% The column width for any nomenclature. 
+\setlength\nomlabelwidth{0.2\linewidth}
+
+
+% Set the table of content depth to only subsections. 
+\setcounter{tocdepth}{2}
+
+
+%\hbadness=10000 % Supresses bad box warnings
+
+% Where to search for figures. 
+\graphicspath{{../figures/}{../figures/logos/}{../figures_remote/}{../figures/hardware/}{../figures/inverse_cdf/}{../figures/simd/}{../figures/scrambling/}{../figures/mlmc/}{../figures/qmlmc/}{../figures/quantised_normals/}{../papers/}{../figures/qmlmc/milstein/}{../figures/cir/}{../figures/fpmlmc/}{../figures/lay_report/}}
+
+% Present the references in the order they are used.
+%\bibliographystyle{unsrtnat} % Sorted by order of use.
+%\bibliographystyle{plainnat} % Alphabetical. 
+\bibliographystyle{customplainnat} % Alphabetical, with a more uniform formatting.
+% Reduce spacing between references. 
+\setlength{\bibsep}{0pt plus 0.3ex}
+% For the usebib package to find the references. 
+\bibinput{references}
+
+
+% Listing -> Code in environment labels.
+\renewcommand{\lstlistingname}{Code}
+\renewcommand{\lstlistlistingname}{List of codes}
+\crefname{listing}{code}{code}  
+\Crefname{listing}{Code}{Codes}
+\AtBeginDocument{\counterwithin{lstlisting}{section}} % Ensures these are numbered enough
+\newfloat{lstfloat}{htbp}{lop} % environment for placing lisings in to make them float. 
+% Make list of listings/code have the same inter-chapter spacing as other lists.
+\let\Chapter\chapter
+\def\chapter{\addtocontents{lol}{\protect\addvspace{10pt}}\Chapter}
+\makeatletter
+\patchcmd{\@chapter}{\chaptermark{#1}}{%
+    \chaptermark{#1}%
+    \addtocontents{lol}{\protect\addvspace{10\p@}}%
+}{\typeout{Chapters patched for list-of-listings.}}{\typeout{Could not patch chapters for list-of-listings.}}
+\makeatother
+
+% List of Algorithms (NB, requires french spelling of 'algorithmes')
+\renewcommand*{\listalgorithmcfname}{List of algorithms}
+\newcommand{\listofalgorithmes}{\tocfile{\listalgorithmcfname}{loa}}
+
+
+
+% Have theorems and lemmas be referenced by name if applicable.
+\makeatletter
+\renewrobustcmd{\cref}{\@osmcref{cref}}
+\renewrobustcmd{\Cref}{\@osmcref{Cref}}
+\def\@osmcref#1#2{%
+    \begingroup
+    \ifcsundef{r@#2}
+    {}
+    {\expandafter\expandafter\expandafter\expandafter\expandafter
+        \expandafter\expandafter\def
+        \expandafter\expandafter\expandafter\expandafter\expandafter
+        \expandafter\expandafter\@osmcref@name
+        \expandafter\expandafter\expandafter\expandafter\expandafter
+        \expandafter\expandafter{%
+            \expandafter\expandafter\expandafter
+            \@thirdoffive\csname r@#2\endcsname}}%
+    \ifcsundef{r@#2@cref}
+    {}
+    {\cref@gettype{#2}{\@osmcref@type}}%
+    \ifboolexpr{not test {\ifdefvoid{\@osmcref@name}}
+        and (test {\ifdefstring{\@osmcref@type}{theorem}}
+        or test {\ifdefstring{\@osmcref@type}{lemma}}
+        or test {\ifdefstring{\@osmcref@type}{corollary}})}
+    {\nameref{#2} (\@cref{#1}{#2})}
+    {\@cref{#1}{#2}}%
+    \endgroup
+}
+\makeatother
+% Give bold names to definitions and similar environments. 
+\makeatletter
+\def\th@plain{%
+    \thm@notefont{}% same as heading font
+    \itshape % body font
+}
+\def\th@definition{%
+    \thm@notefont{}% same as heading font
+    \normalfont % body font
+}
+\makeatother
+% Giving correct theorem and lemma environments. 
+\newtheorem{theorem}{Theorem}[section]
+\newtheorem{corollary}{Corollary}[theorem]
+\newtheorem{proposition}[theorem]{Proposition}
+\newtheorem{lemma}[theorem]{Lemma}
+\theoremstyle{definition}
+\newtheorem{remark}{Remark}[theorem]
+\newtheorem{definition}{Definition}[section]
+\newtheorem{assumption}{Assumption}[section]
+\newtheorem{proofof}{Proof}[theorem]
+\AtEndEnvironment{proofof}{\qed}
+% Naming these nicely.
+\crefname{lemma}{lemma}{lemmas}
+\Crefname{lemma}{Lemma}{Lemmas}
+\crefname{theorem}{theorem}{theorems}
+\Crefname{theorem}{Theorem}{Theorems}
+\crefname{corollary}{corollary}{corollaries}
+\Crefname{corollary}{Corollary}{Corollaries}
+\Crefname{proposition}{proposition}{propositions}
+\Crefname{proposition}{Proposition}{Propositions}
+\crefname{remark}{remark}{remarks}
+\Crefname{remark}{Remark}{Remarks}
+\crefname{definition}{definition}{definitions}
+\Crefname{definition}{Definition}{Definitions}
+\crefname{assumption}{assumption}{assumptions}
+\Crefname{assumption}{Assumption}{Assumptions}
+% Change the end of proof symbol
+\renewcommand\qedsymbol{\textbf{QED}}
+% Making the proof in bold so it stands out more. 
+\let\oldproofname=\proofname
+\renewcommand{\proofname}{\rm\bf{\oldproofname}}
+
+% Give bold names to definitions and similar environments. 
+\makeatletter
+\def\th@plain{%
+    \thm@notefont{}% same as heading font
+    \itshape % body font
+}
+\def\th@definition{%
+    \thm@notefont{}% same as heading font
+    \normalfont % body font
+}
+\makeatother
+
+% Nice paragraph indents.
+\setlength{\parindent}{5em}
+\setlength{\parskip}{0.5\baselineskip}
+
+% Giving the references the right title.
+\renewcommand{\bibname}{References}
+\renewcommand{\listfigurename}{List of figures}
+\renewcommand{\listtablename}{List of tables}
+
+
+% Removes hyphenation
+\tolerance=1
+\emergencystretch=\maxdimen
+\hyphenpenalty=10000
+\hbadness=10000
+
+% To change the spacing in lists
+%\setlist{noitemsep} % or \setlist{noitemsep} to leave space around whole list
+%\setenumerate{itemsep=-0.4em,topsep=0.5em} % Seems to look nice.
+
+% Custom column widths using C{2cm}, L, R, etc.
+\newcolumntype{L}[1]{>{\raggedright\let\newline\\\arraybackslash\hspace{0pt}}m{#1}}
+\newcolumntype{C}[1]{>{\centering\let\newline\\\arraybackslash\hspace{0pt}}m{#1}}
+\newcolumntype{R}[1]{>{\raggedleft\let\newline\\\arraybackslash\hspace{0pt}}m{#1}}
+
+% Gives a nice column separation in multicolumn mode.
+\setlength{\columnsep}{5mm}
+
+% Figure environment for use in multicolumn. To put in captions use \captionof{figure}{content of caption}.
+\newenvironment{Figure}
+{\par\medskip\noindent\minipage{\linewidth}}
+{\endminipage\par\medskip}
+
+% Gives the nice SQRT symbol.
+\makeatletter
+\let\oldr@@t\r@@t
+\def\r@@t#1#2{%
+	\setbox0=\hbox{$\oldr@@t#1{#2\,}$}\dimen0=\ht0
+	\advance\dimen0-0.2\ht0
+	\setbox2=\hbox{\vrule height\ht0 depth -\dimen0}%
+	{\box0\lower0.4pt\box2}}
+\LetLtxMacro{\oldsqrt}{\sqrt}
+\renewcommand*{\sqrt}[2][\ ]{\oldsqrt[#1]{#2}}
+\makeatother
+
+\DeclareMathOperator{\sign}{sign}
+\DeclareMathOperator*{\argmin}{argmin}
+\DeclareMathOperator*{\argmax}{argmax}
+\newcommand{\indicatorfn}{\mathds{1}}
+\newcommand{\iconst}{\mathrm{i}}
+\newcommand{\econst}{\mathrm{e}}
+\newcommand{\erfinv}{\mathrm{inverf}}
+\newcommand{\inverf}{\erfinv}
+
+% A nice conditional expectation environment for use with probability spaces. 
+% Based on Physics package. 
+% \conExp[Measure][Subset]{Argument}{Condition}   (Condition is optional field)
+\DeclareDocumentCommand\conExp{s o o m g}{
+    % s : star, to use non scaling parenthesese.
+    % o : optional, probability measure.
+    % o : optional, set over which expectation is taken.
+    % m : mandatory, argument.
+    % g : optional, condition.
+    \IfBooleanTF{#1}{}{\trigbraces}{\mathbb{E}\IfNoValueTF{#2}{}{^{#2}}\IfNoValueTF{#3}{}{_{#3}}}(#4\IfNoValueTF{#5}{}{\IfBooleanTF{#1}{\mid}{\,\middle|\,}#5})
+}
+
+\DeclareDocumentCommand\conVar{s o o m g}{
+    % s : star, to use non scaling parenthesese.
+    % o : optional, probability measure.
+    % o : optional, set over which expectation is taken.
+    % m : mandatory, argument.
+    % g : optional, condition.
+    \IfBooleanTF{#1}{}{\trigbraces}{\mathbb{V}\IfNoValueTF{#2}{}{^{#2}}\IfNoValueTF{#3}{}{_{#3}}}(#4\IfNoValueTF{#5}{}{\IfBooleanTF{#1}{\mid}{\,\middle|\,}#5})
+}
+
+\DeclareDocumentCommand\quadVar{s m g g}{
+    % s : star, to use non scaling parenthesese.
+    % m : mandatory, first argument.
+    % g : optional, evaluation time.
+    % g : optional, second argument.
+    \IfBooleanTF{#1}{\expval*{#2\IfNoValueF{#4}{,#4}}\IfNoValueF{#3}{_{#3}}}{\expval{#2\IfNoValueF{#4}{,#4}}\IfNoValueF{#3}{_{#3}}}
+}
+
+\newlength{\LowercaseLength}
+\AtBeginDocument{\settoheight{\LowercaseLength}{a}} % after \normalsize
+\DeclareDocumentCommand\lorder{s m}{%
+    \IfBooleanTF{#1}{}{\trigbraces}{\resizebox{!}{\LowercaseLength}{$\mathcal{O}$}}(#2)%
+}
+
+
+% Number equations down to the subection level, e.g. 1.2.3 is the third equation in
+% subsection 2 of section 1.
+\numberwithin{equation}{section}
+\newcommand*\tageq{\refstepcounter{equation}\tag{\theequation}}
+% Ensure equations are correctly formatted with cleverref
+\crefname{equation}{}{}
+\creflabelformat{equation}{(#2#1#3)}
+
+
+% This makes the footnote counter reset in each section.
+\counterwithin*{footnote}{section}
+
+% Nice spacing in the first fow of a table
+\newcommand{\firstrowspacing}{\rule{0pt}{2.6ex}}
+% For a more open look in tables.
+\setlength\extrarowheight{3pt} 
+
+% Some corporate names we may need to append a \textsuperscript{\textregistered} into. 
+\newcommand{\nag}{NAG\xspace}
+\newcommand{\arm}{Arm\xspace}
+\newcommand{\intel}{Intel\xspace}
+\newcommand{\openmp}{OpenMP\xspace}
+\newcommand{\amd}{AMD\xspace}
+\newcommand{\ibm}{IBM\xspace}
+\newcommand{\nvidia}{Nvidia\xspace}
+\newcommand{\icdf}{inverse cumulative density function\xspace}
+\newcommand{\rng}{random number generator\xspace}
+\newcommand{\PhiInverse}{$ \Phi^{-1}(\cdot) $\xspace}
+\newcommand{\Ito}{It\^{o}\xspace}
+\newcommand{\BDG}{Burkholder-Davis-Gundy\xspace}
+\newcommand{\CIR}{Cox-Ingersoll-Ross\xspace}
+
+
+% The nice headers and footers.
+\pagestyle{fancy}
+% Modifying the header and footer styles for chapters and sections. 
+\renewcommand{\chaptermark}[1]{\markboth{#1}{}}
+
+% Specifying the headers and footers. 
+\fancyhf{}
+\renewcommand*{\headrulewidth}{1pt}%
+\fancyhead[LO]{\nouppercase{\leftmark}}
+\fancyhead[RE]{\nouppercase{\rightmark}}
+\fancyhead[LE,RO]{\thepage}
+\fancypagestyle{plain}{%
+	\fancyhf{}%
+	\renewcommand*{\headrulewidth}{0pt}%
+}
+\cfoot{}%\thepage}
+
+
+
+
+
+% Make margin notes small
+\renewcommand*{\marginfont}{\noindent \footnotesize}
+%\reversemarginpar % If I want a thick margin by the binding.
+\renewcommand\raggedrightmarginnote{\sloppy}
+\renewcommand\raggedleftmarginnote{\sloppy}
+
+
+% Gives a nice quote environment.
+\NewDocumentEnvironment{myquote}{O{}}{%
+	\begin{center}
+		\begin{minipage}{0.85\linewidth}
+			\vspace{1ex}
+			\centering \itshape \justifying}
+		{%
+			\ifthenelse{\isempty{#1}}{}{
+			\begin{flushright}%The author/source.
+				\normalfont #1
+			\end{flushright}}
+						\vspace{1ex}
+		\end{minipage}
+	\end{center}
+}
+
+% Gives a nice siderule environment. e.g. \begin{siderules}
+\newmdenv[topline=false,bottomline=false,rightline=false,skipabove=\topsep,skipbelow=\topsep,backgroundcolor=none]{siderules}
+
+% For a numbered and description. Use inside enumerate, \litem{Something} etc. 
+\newcommand\litem[1]{\item{\textit{#1} \\ \hfill \vspace*{-1.5ex} \\ \indent}}
+
+% Nice spacing in lists
+%\setlist{listparindent=\parindent,parsep=1ex} 
+
+% This alligns figures in the adjust box environment to the inner margin. 
+\newcommand{\aligninner}{\ifoddpage \raggedright \else \raggedleft \fi}%
+
+
+% Gives a nice aligned figure environment, where figures are flush to the inner margin overflowing off the outer margin first. Useful for very wide figures, or set of lots of fub figures. 
+\NewDocumentEnvironment{myalignedfigure}{O{1.3} O{htb}}{% fractional_linewidth,  position
+	\begin{figure}[#2]
+	\checkoddpage
+	\edef\whichside{\ifoddpage left\else right\fi}
+		\begin{adjustbox}{\whichside, minipage=#1\linewidth}}
+		{%
+		\end{adjustbox}
+	\end{figure}
+	}
+
+% Gives a nice draft text.
+\SetWatermarkScale{1}
+\SetWatermarkLightness{0.9}
+
+% The oxford comma from cref for multiple citations. 
+\newcommand{\creflastconjunction}{, and\nobreakspace}
+
+% Allows for bold face typed text fonts for computer modern font family. Useful in listings. 
+\DeclareFontShape{OT1}{cmtt}{bx}{n}{<5><6><7><8><9><10><10.95><12><14.4><17.28><20.74><24.88>cmttb10}{}
+
+%\lstset{language=C,
+%    morecomment=[l][{\color[rgb]{0.1, 0.2, 0.8}}]{\#},
+%    moredelim=[il][{\color[rgb]{0.1, 0.2, 0.8}}]{@},
+%}
+
+% cf the file /usr/local/texlive/2018/texmf-dist/tex/latex/listings/lstlang1.sty under ANSI C.
+\lstset{otherkeywords={\#pragma}}
+
+% Allowing alignat to have repeating alignment options. 
+\makeatletter
+\def\align@preamble@r{%
+    \hfil
+    \strut@
+    \setboxz@h{\@lign$\m@th\displaystyle{##}$}%
+    \ifmeasuring@\savefieldlength@\fi
+    \set@field
+    \tabskip\z@skip}
+\def\align@preamble@l{%
+    \strut@
+    \setboxz@h{\@lign$\m@th\displaystyle{{}##}$}%
+    \ifmeasuring@\savefieldlength@\fi
+    \set@field
+    \hfil
+    \tabskip\alignsep@}
+\def\align@preamble@c{%
+    \hfil
+    \strut@
+    \setboxz@h{\@lign$\m@th\displaystyle{{}##}$}%
+    \ifmeasuring@\savefieldlength@\fi
+    \set@field
+    \hfil
+    \tabskip\alignsep@
+}
+\def\setalignpreamble#1{\def\align@preamble{}\x@setalignpreamble#1\relax}
+\def\x@setalignpreamble#1{%
+    \ifx\relax#1\else
+    \edef\align@preamble{%
+        \expandafter\unexpanded\expandafter{\align@preamble}%
+        &\span\expandafter\noexpand\csname align@preamble@#1\endcsname}%
+    \expandafter\x@setalignpreamble
+    \fi}
+
+
+% A more extreme version of shortintertext
+\newcommand\prefixtext[1]{%
+    \ifvmode\else\\\@empty\fi
+    \noalign{%
+        \penalty0%
+        \vbox{\mathstrut}%
+        \penalty10000%
+        \vskip-\baselineskip
+        \penalty10000%
+        \vbox to 0pt{%
+            \normalbaselines
+            \ifdim\linewidth=\columnwidth
+            \else
+            \parshape\@ne
+            \@totalleftmargin\linewidth
+            \fi
+            \vss
+            \noindent#1\par}%
+        \penalty10000%
+        \vskip-\baselineskip}%
+    \penalty10000}
+
+
+% Gives a nice thousand separator. 
+\sisetup{group-separator = \text{\,}, group-minimum-digits=5}
+
+% Makes thead the normal font size. 
+\renewcommand\theadfont{}
+
+% \fp[precision]{Argument} (Condition is optional field)
+\DeclareDocumentCommand\fp{o m}{
+    % s : star, to use non scaling parenthesese.
+    % o : optional, precision level.
+    % m : mandatory, argument.
+    \bar{#2}\IfNoValueTF{#1}{}{^{(#1)}}
+}
+% \fpSQRT[precision]{Argument} 
+\DeclareDocumentCommand\fpSQRT{s o m}{
+    % s : star, to use non scaling parenthesese.
+    % o : optional, precision level.
+    % m : mandatory, argument.
+    \mathinner{\IfBooleanTF{#1}{}{\trigbraces}{\overline{\mathrm{sqrt}}\IfNoValueTF{#2}{}{^{(#2)}}}(#3)}
+}
+\DeclareDocumentCommand\fpRound{s o m}{
+    % s : star, to use non scaling parenthesese.
+    % o : optional, precision level.
+    % m : mandatory, argument.
+    \mathinner{\IfBooleanTF{#1}{}{\trigbraces}{\mathscr{R}}(#3\IfNoValueTF{#2}{}{;{#2}})}
+}
+\DeclareDocumentCommand\support{s m}{
+    % s : star, to use non scaling parenthesese.
+    % m : mandatory, argument.
+    \mathinner{\IfBooleanTF{#1}{}{\trigbraces}{\mathrm{supp}}(#2)}
+}
+
+% Making some circled operators. (use \ocircle for a smaller circle)
+\makeatletter
+\newcommand\incircbin
+{%
+  \mathpalette\@incircbin
+}
+\newcommand\@incircbin[2]
+{%
+  \mathbin%
+  {%
+    \ooalign{\hidewidth$#1#2$\hidewidth\crcr$#1\bigcirc$}%
+  }%
+}
+\newcommand{\fpPlus}{\incircbin{+}}
+\newcommand{\fpMinus}{\incircbin{-}}
+\newcommand{\fpTimes}{\incircbin{\times}}
+\newcommand{\fpDivide}{\incircbin{\divisionsymbol}}
+\newcommand{\fpOp}{\incircbin{\ast}}
+\makeatother
+
+%\newcommand{\fpPlus}{\oplus}
+%\newcommand{\fpMinus}{\ominus}
+%\newcommand{\fpTimes}{\otimes}
+%\newcommand{\fpDivide}{\oslash} 
+%\newcommand{\fpOp}{\circledast}
+
+
+%\newcommand{\sumfine}{\mathop{{{\sum}^{\mathrlap{\,\mathrm{f}}}}}}
+%\newcommand{\sumcoarse}{\mathop{{{\sum}^{\mathrlap{\,\mathrm{c}}}}}}
+\DeclareDocumentCommand\sumfine{g g}{
+    % g : optional, subscript.
+    % g : optional, superscript.
+    \mathop{{{\sum}_{\mathrlap{\mathrm{f}}}}}\limits\IfNoValueF{#1}{_{#1}}\IfNoValueF{#2}{^{#2}}\,
+}
+\DeclareDocumentCommand\sumcoarse{g g}{
+    % g : optional, subscript.
+    % g : optional, superscript.
+    \mathop{{{\sum}_{\mathrlap{\mathrm{c}}}}}\limits\IfNoValueF{#1}{_{#1}}\IfNoValueF{#2}{^{#2}}\,
+}
+
+\DeclareDocumentCommand\supfine{g}{
+    % g : optional, subscript.
+    \mathop{\mathrm{sup}^{\mathrlap{\mathrm{f}}}}\IfNoValueF{#1}{_{#1}}\,
+}
+\DeclareDocumentCommand\supcoarse{g}{
+    % g : optional, subscript.
+    \mathop{\mathrm{sup}^{\mathrlap{\mathrm{c}}}}\IfNoValueF{#1}{_{#1}}\,
+}
+
+
+
+% For usage in align environments. 
+\newcommand\phantomrel[1]{\mathrel{\phantom{#1}}}
+\newcommand\phantombin[1]{\mathbin{\phantom{#1}}}
+
+% For defining some paired delimited items, such as set, floor, ceil, etc, where the spacing is correct and scaling is supressed with a * notation, e.g. \set{} and \set*{}
+\NewDocumentCommand\xDeclarePairedDelimiter{mmm}
+{%
+    \NewDocumentCommand#1{som}{%
+        \IfNoValueTF{##2}
+        {\IfBooleanTF{##1}{#2##3#3}{\mleft#2##3\mright#3}}
+        {\mathopen{##2#2}##3\mathclose{##2#3}}%
+    }%
+}
+\xDeclarePairedDelimiter{\set}{\lbrace}{\rbrace}
+\xDeclarePairedDelimiter{\floor}{\lfloor}{\rfloor}
+\xDeclarePairedDelimiter{\ceil}{\lceil}{\rceil}
+\xDeclarePairedDelimiter{\parens}{(}{)} 
+
+\DeclareDocumentCommand\logtwo{}{\trigbraces{{\logarithm}_{2}}}
+\DeclareDocumentCommand\logten{}{\trigbraces{{\logarithm}_{10}}}
+
+% Allowing verbatim in footnotes. 
+\VerbatimFootnotes
+
+\newcommand{\cmark}{\ding{51}}%
+\newcommand{\xmark}{\ding{55}}%
+
+% Making a 4-way difference operator (looks like the D'Alembertian)
+\makeatletter
+\newcommand{\fourdiff}{{\mathpalette\fourdiff@\relax}}%{\mathop{\mathpalette\fourdiff@\relax}}
+\newcommand{\fourdiff@}[2]{%
+  \begingroup
+  \sbox\z@{$\m@th#1\square$}%
+  \dimen0=\fontdimen8
+    \ifx#1\displaystyle\textfont\else
+    \ifx#1\textstyle\textfont\else
+    \ifx#1\scriptstyle\scriptfont\else
+    \scriptscriptfont\fi\fi\fi3
+  \makebox[\wd\z@]{%
+    \hbox to \ht\z@{%
+      \vrule width \dimen0
+      \kern-\dimen0
+      \vbox to \ht\z@{
+        \hrule height \dimen0 width \ht\z@
+        \vss
+        \hrule height 2\dimen0
+      }%
+      \kern-2.5\dimen0
+      \vrule width 2.5\dimen0
+    }%
+  }%
+  \endgroup
+}
+\makeatother
+
+
+
+\newcommand{\contradiction}{\scaleobj{1.5}{\text{\textreferencemark}}}
+
+
+% So Roman page numbers are right aligned. and proper spacing between section numbers and captions
+\DeclareTOCStyleEntry[numwidth=3.5em]{tocline}{figure}% for figure entries
+\DeclareTOCStyleEntries[
+  level:=figure,
+  indent:=figure,
+  numwidth:=figure,
+  dynnumwidth% enlarges numwidth automatically if the entry number is too long; needs an additional run
+]{tocline}{table,lstlisting,algocf,todo}
+\DeclareTOCStyleEntries[
+  rightindent=10em,
+  pagenumberbox=\pagenumberbox
+]{tocline}{section,subsection,subsubsection,paragraph,subparagraph,figure,table,lstlisting,algocf,todo}
+\newcommand*\pagenumberbox[1]{\mbox{\hspace{0em}#1}}
+
+
+
+%%%% Patching some math environments from AMS for better line numbering. %%%%
+
+%% Patch 'normal' math environment: (currently unused, but good to have)
+% \newcommand*\linenomathpatch[1]{%
+%   \expandafter\pretocmd\csname #1\endcsname {\linenomath}{}{}%
+%   \expandafter\pretocmd\csname #1*\endcsname{\linenomath}{}{}%
+%   \expandafter\apptocmd\csname end#1\endcsname {\endlinenomath}{}{}%
+%   \expandafter\apptocmd\csname end#1*\endcsname{\endlinenomath}{}{}%
+% }
+%% Patch AMS math environment:
+\newcommand*\linenomathpatchAMS[1]{%
+    \expandafter\pretocmd\csname #1\endcsname {\linenomathAMS}{}{}%
+    \expandafter\pretocmd\csname #1*\endcsname{\linenomathAMS}{}{}%
+    \expandafter\apptocmd\csname end#1\endcsname {\endlinenomath}{}{}%
+    \expandafter\apptocmd\csname end#1*\endcsname{\endlinenomath}{}{}%
+}
+
+%% Definition of \linenomathAMS depends on whether the mathlines option is provided
+\expandafter\ifx\linenomath\linenomathWithnumbers
+\let\linenomathAMS\linenomathWithnumbers
+%% The following line gets rid of an extra line numbers at the bottom:
+\patchcmd\linenomathAMS{\advance\postdisplaypenalty\linenopenalty}{}{}{}
+\else
+\let\linenomathAMS\linenomathNonumbers
+\fi
+
+% \linenomathpatch{equation} %% <- unnecessary, equation is already patched
+\linenomathpatchAMS{gather}
+\linenomathpatchAMS{multline}
+\linenomathpatchAMS{align}
+\linenomathpatchAMS{alignat}
+\linenomathpatchAMS{flalign}
+
+% Mark the style as style=C and it will highlight more keywords. 
+\lstdefinestyle{C}{
+    language=C,
+    morekeywords={omp,simd,reduction,simdlen,declare,inline,bool,restrict,half},
+    otherkeywords={\#pragma,\_\_fp16}
+}
+
+% Making an independent symbol.
+\newcommand\independent{\protect\mathpalette{\protect\independenT}{\perp}}
+\def\independenT#1#2{\mathrel{\rlap{$#1#2$}\mkern2mu{#1#2}}}
+
+% Increase algorithm spacing between box and caption and font size.
+\SetAlCapSkip{1em}
+\SetAlCapNameFnt{\small}
+\SetAlCapFnt{\small}

@@ -4,10 +4,14 @@
 \fancyhead[LO]{\@title}
 \makeatother
 
+\newcommand{\singlecodeline}[1]{\\[1em]\centerline{\lstinline[basicstyle=\ttfamily]$#1$}\\[1em]}
+
+
 \title{Approximate random variables: A brief guide for practitioners}
 \author{\href{mailto:oliver.sheridan-methven@maths.ox.ac.uk}{Oliver Sheridan-Methven}%
 \thanks{\href{mailto:oliver.sheridan-methven@maths.ox.ac.uk}%
-{\texttt{oliver.sheridan-methven@maths.ox.ac.uk}}}}
+{\texttt{oliver.sheridan-methven@maths.ox.ac.uk}}}
+}
 \date{\datedayname\ \nth{\number\day} \monthname\  \number\year}
 
 \begin{document}
@@ -145,7 +149,7 @@ The demonstrations we provide will mostly be written in Python, and a few higher
 \item The \arm \texttt{armclang} compiler.
 \item The \nvidia \texttt{nvcc} compiler.
 \end{itemize} 
-Similarly, we will assume access to appropriate hardware from either \intel, \arm, or \nvidia where appropriate. 
+Similarly, we will assume access to appropriate hardware from either \intel, \arm, or \nvidia where appropriate. We assume when compiling that the user has also set up the default paths to find the header files and libraries by appropriately setting the environment variables \verb|LIBRARY_PATH| and \verb|C_INCLUDE_PATH|.
 
 We will try an keep the python packages used to a minimum, although some of the notable packages which are used within our code include: \texttt{numpy}, \texttt{pandas}, \texttt{scipy}, \texttt{mpmath}, \texttt{matplotlib}, etc. 
 
@@ -155,14 +159,205 @@ We mentioned earlier in \Cref{sec:what_are_approximate_random_variables} an appr
 
 The number of intervals is the easy bit, so let's say we have $ N $ of them, where in most of our approximations we found $ N = 1028 $ to be sufficiently high to obtain a reasonable fidelity approximation. As for what value to use, a sensible choice is whatever you would expect to get from the exact function. The exact inverse cumulative distribution function for the Gaussian distribution is usually denoted $ \Phi^{-1} $. Denoting the start and end of a particular interval as $ a $ and $ b $ respectively, where $ a < b $, the value used for a particular interval is
 \begin{equation}
-\int_a^b \Phi^{-1}(x) \dd{x} \equiv \int_{\Phi(a)}^{\Phi(b)} \dfrac{z}{\sqrt{2\pi}} \exp(-\dfrac{z^2}{2}) \dd{z}.
+\dfrac{1}{b - a}\int_a^b \Phi^{-1}(x) \dd{x} \equiv \dfrac{1}{b - a} \int_{\Phi^{-1}(a)}^{\Phi^{-1}(b)} \dfrac{z}{\sqrt{2\pi}} \exp(-\dfrac{z^2}{2}) \dd{z}.
 \end{equation}
 Both these integrals are equivalent to one another, where $ \Phi $ is the Gaussian's cumulative distribution function (i.e.~not the \emph{inverse} CDF). Both are easy for a computer to calculate, where the second is sometimes more convenient for intervals touching the edge. 
 
+If we label the intervals $ 0, 1, 2,\ldots, N-1 $, we can store these values in an list. For a uniform random input $ u $ in the range $ [0, 1) $, where 1 is not included, we can obtain the desired value by simply looking the index corresponding to the value. Mapping $ u $ to the index is done by multiplying by $ N $ and only keeping the integer part, and hence computes $ \lfloor u N \rfloor $, which in code can be done my something equivalent to \verb|int(u * N)|.
+
+In the file \singlecodeline{approximate_gaussian_distribution.py} there is a function \singlecodeline{construct_piecewise_constant_approximation} which produces a piecewise constant approximation to the Gaussian's inverse cumulative distribution function. A condensed version is shown in \Cref{code:python:construct_piecewise_constant_approximation}.
+
+\begin{lstfloat}[htb]
+\begin{lstlisting}[language=python, captionpos=b, caption={Constructing a piecewise constant approximation.}, label={code:python:construct_piecewise_constant_approximation}]
+def expected_value_in_interval(func, a, b):
+    """ Calculates the expected value of a function inside an interval. """
+    return integrate(func, a, b) / (b - a)
+
+
+def build_lookup_table(func, n_table_entries):
+    """ Builds a lookup table. """
+    interval_width = 1.0 / n_table_entries
+    lookup_table = zeros(n_table_entries)
+    for n in progressbar(range(n_table_entries)):
+        a = n * interval_width
+        b = a + interval_width
+        lookup_table[n] = expected_value_in_interval(func, a, b)
+    return lookup_table
+
+
+def construct_piecewise_constant_approximation(func, n_intervals):
+    """ Constructs a piecewise constant approximation. """
+    lookup_table = build_lookup_table(func, n_intervals)
+
+    def piecewise_constant_approximation(u):
+        """ A piecewise constant approximation. """
+        return lookup_table[array(n_intervals * u).astype(int)]
+
+    return piecewise_constant_approximation
+\end{lstlisting}
+\end{lstfloat}
+
+In the file \singlecodeline{approximate_gaussian_distribution_demonstrations.py}
+there is the function  
+\singlecodeline{plot_piecewise_constant_approximation_of_gaussian}
+which demonstrates how to use this approximation, and how you can reproduce \Cref{fig:inverse_cdf_uniform_discretisation_unshaded_simplified} for yourself. A condensed version of the function is shown in \Cref{code:python:plot_piecewise_constant_approximation_of_gaussian}, where we exclude the values 0 and 1 as the exact function struggles with these values (returning infinite values). The output from \Cref{code:python:plot_piecewise_constant_approximation_of_gaussian} is shown in \Cref{fig:piecewise_constant_approximation_of_gaussian}.
+
+\begin{lstfloat}[htb]
+\begin{lstlisting}[language=python, captionpos=b, caption={Comparing the exact and approximate functions.}, label={code:python:plot_piecewise_constant_approximation_of_gaussian}]
+uniform_input = linspace(0, 1, 1000)[1:-1]  # We exclude the end points.
+approximate_inverse_gaussian_cdf = \
+    construct_piecewise_constant_approximation(
+        inverse_gaussian_cdf, 
+        n_intervals=8)
+plot(uniform_input, inverse_gaussian_cdf(uniform_input))
+plot(uniform_input, approximate_inverse_gaussian_cdf(uniform_input))
+\end{lstlisting}
+\end{lstfloat}
+
+\begin{figure}[htb]
+\centering
+\includegraphics[width=0.7\linewidth]{piecewise_constant_approximation_of_gaussian}
+\caption{The piecewise constant approximation produced by \Cref{code:python:plot_piecewise_constant_approximation_of_gaussian}.}
+\label{fig:piecewise_constant_approximation_of_gaussian}
+\end{figure}
+
+Although the Python implementation is not optimised to be very high speed (compared to our C version), it is still much faster than the exact routine (\verb|norm.ppf| from \verb|scipy.stats|). On my machine, the function \singlecodeline{piecewise_constant_approximation_of_gaussian_timing} from the file \singlecodeline{approximate_gaussian_distribution_demonstrations.py} gives the following estimates for the average time:
+\begin{verbatim}
+Average time for the approximate function: 3.23281e-08 s.
+Average time for the exact function: 8.69456e-07 s.
+\end{verbatim}
+from which we can see the approximation is approximately 30 times faster than the exact function. Of course, both of these times are much slower than equivalent C code, but it is at least indicative that there is a lot of speed to be gained. 
+
+
+It is worth noting of course that the lookup table only needs to be computed once, and this can be done offline, so is not performance critical. 
+
+So how can a higher performance version be implemented in C? Easily. Assuming we've precomputed the values for the lookup table, then these can be stored in an array, and the piecewise constant approximation is a effectively a single line of C code. A slightly expanded version of the function \singlecodeline{piecewise_constant_approximation}
+from the file \singlecodeline{piecewise_constant_approximation.c}
+is shown in \Cref{code:c:piecewise_constant_approximation}. We can see the implementation condenses down to a single simple line of code. The reason this is so fast is because the lookup table is small enough that it will easily fit within the L2-cache. Furthermore the lookup is unconditional, and so well suited to vectorisation, and hence we explicitly mark the process as suitable for vectorisation using \verb|#pragma omp simd|.
+
+\begin{lstfloat}[htb]
+\begin{lstlisting}[style=C, captionpos=b, caption={Constructing a piecewise constant approximation.}, label={code:c:piecewise_constant_approximation}]
+#include <omp.h>
+
+#define LOOKUP_TABLE_SIZE 1024
+const double lookup_table[LOOKUP_TABLE_SIZE] = {-3.37,-2.98,...,2.98,3.37};
+
+void piecewise_constant_approximation(
+    unsigned int n_samples, 
+    const double *restrict input, 
+    double *restrict output)
+{
+    #pragma omp simd
+    for (unsigned int n = 0; n < n_samples; n++)
+    {
+        output[n] = lookup_table[(unsigned int) (LOOKUP_TABLE_SIZE * input[n])];
+    }
+}
+\end{lstlisting}
+\end{lstfloat}
+
+To compare this against the equivalent GSL function (\verb|gsl_cdf_ugaussian_Pinv|), there is a simple series of compiler instructions in the file \singlecodeline{make_time_gaussian_approximations.sh} which resembles 
+\begin{verbatim}
+gcc -I. -c piecewise_constant_approximation.c
+gcc -I. -O0 -c time_gaussian_approximations.c
+gcc -I. -o time_approximations *.o -lgsl
+\end{verbatim}
+and produces the executable \verb|time_approximations|. On my machine, which is not vector capable, and running with minimal optimisations we obtain
+\begin{verbatim}
+Average time for the approximate function: 2.28712e-09 s.
+Average time for the exact (GSL) function: 2.18994e-08 s.
+\end{verbatim}
+Similar to before the approximation is 10 times faster than the exact function from GSL, without any optimisation. Furthermore, both functions are running 10 times faster in C than in Python, which is not too surprising. If we compile \singlecodeline{piecewise_constant_approximation.c}
+under \verb|-O3| then this changes to 
+\begin{verbatim}
+Average time for the approximate function: 9.3289e-10 s.
+Average time for the exact (GSL) function: 2.18471e-08 s.
+\end{verbatim}
+widening the speed increase to nearly 25 times. With vector capable hardware and some fine tuning with OpenMP, the method can be very competitive. 
+
+
 \section{Piecewise polynomial approximations}
 
-There are various measures of the error, including the worse case error or the average case error. 
-For Monte Carlo applications, we used a variant called \emph{the mean squared error}, known mathematically as \emph{the $ L^2 $-error}.
+
+There are a few natural ways to extend the piecewise constant approximation, and the two most obvious are: increase the order of the polynomial, and change the spacing of the intervals so they're denser around the edges. 
+
+Starting with increasing the order of the polynomial, the next improvement from a piecewise constant is a piecewise linear function. So the next question is which is the linear function best approximates the function in a given interval. There are various measures of the error, including the worse case error, or the average case error. For Monte Carlo applications, we used a variant called \emph{the mean squared error}, known mathematically as \emph{the $ L^2 $-error}. One of the advantages of the $ L^2 $-error, is that it is relatively easy to determine the optimal parameters. For a function $ f $, let's approximate this using a function $ \tilde{f} $, where we write it as an $ m $-th order polynomial  
+\begin{equation}
+f(u) \approx \tilde{f}(u) = c_0 + c_1 u + c_2 u^2 + \cdots + c_m u^m. 
+\end{equation}
+So how can we determine the optimal coefficients? The error can be expressed as 
+\begin{equation}
+\int_{a}^{b} \parens{f(u) - \sum_{i=0}^{m}c_i u^i}^2 \dd{u}.
+\end{equation}
+We can minimise this by differentiating with respect to each coefficient $ c_i $ and finding the values which make the derivative zero. Doing this for each of the coefficients, we obtain the set of $ m + 1 $ simultaneous equations 
+\begin{equation}
+\sum_{i=0}^{m} c_i \parens{\dfrac{b^{i+j+1} - a^{i + j + 1}}{i + j + 1}} = \int_{a}^{b} u^j f(u) \dd{u}
+\end{equation}
+for $ j = 0,1,2,\ldots,m $, which is equivalent to an equation of the form 
+\begin{equation}
+A\bm{x} = \bm{b}.
+\end{equation} 
+Luckily, solving simultaneous equations of this form is easy for computers, and so the coefficients are easily determined, where 
+\begin{gather}
+\bm{b}_i = \int_{a}^{b} u^i f(u) \dd{u} \\
+\shortintertext{and}
+A_{i,j} = \dfrac{b^{i+j+1} - a^{i + j + 1}}{i + j + 1}, \\
+\shortintertext{and we are solving for values of $ \bm{x} $, where}
+\bm{x}_i = c_i.
+\end{gather}
+
+The improvement we also want to make is to make the intervals denser near the edges of the function, as these are the trickiest bits requiring the most effort from an approximation. One way to achieve this is to have the intervals geometrically decaying in size near the edge, and one decay rate which is particularly well suited for computer calculations is in powers of two (as computers work in binary). When the intervals are decaying powers of two, we give these the special name of \emph{dyadic intervals}.
+
+All inverse cumulative distribution functions are defined for valued between 0 and 1, and so we only need dyadic intervals in this range. If we again consider $ N $ intervals in this range, each corresponding to an index, they are as shown in \Cref{tab:dyadic_intervals_array_indices}.
+
+\begin{table}[htb]
+\centering
+\begin{tabular}{cc}
+Dyadic interval         & Index \\ \hline
+$ [\tfrac{1}{2}, 1) $           &          0           \\
+$ [\tfrac{1}{4}, \tfrac{1}{2}) $     &          1           \\
+$ [\tfrac{1}{8}, \tfrac{1}{4}) $     &          2           \\
+$ \vdots $                &      $ \vdots $      \\
+$ [\tfrac{1}{2^{n+1}}, \tfrac{1}{2^n}) $ &        $ n $ \\
+$ \vdots $                &      $ \vdots $      \\
+$ [0, \tfrac{1}{2^{N-1}}) $ &        $ N-1 $
+\end{tabular}
+\caption{The indices for various dyadic intervals.}
+\label{tab:dyadic_intervals_array_indices}
+\end{table}
+
+These intervals are dense as near zero, but they are not dense near 1. Is this a problem? Not really. For the Gaussian's inverse cumulative distribution function, this is rotationally symmetric about $ \tfrac{1}{2} $ such that $ \Phi^{-1}(u) \equiv -\Phi^{-1}(1-u) $, and so values near one are easily computed by the equivalent value reflected about $ \tfrac{1}{2} $. Notice that if we reflect about $ \tfrac{1}{2} $, then there will be one interval (the 0 interval), which will contain just the value at $ \tfrac{1}{2} $. While this a slight computational redundancy, ensuring this value has an interval in which it belongs ensures any approximation won't break if it is given the perfectly valid value of $ \tfrac{1}{2} $.
+
+Taking the an order-1 polynomial, corresponding to a piecewise linear function, in the file \singlecodeline{approximate_gaussian_distribution.py} the function \singlecodeline{construct_symmetric_piecewise_polynomial_approximation} provides a relatively simple demonstration of how to build and implement such a function. A small demonstration of how to use this can be found in function \singlecodeline{plot_piecewise_polynomial_approximation_of_gaussian} from \singlecodeline{approximate_gaussian_distribution_demonstrations.py}
+where the output is shown in \Cref{fig:piecewise_polynomial_approximation_of_gaussian}. If the number of intervals in increased to a modest amount (e.g.~8 or 16) then the approximation achieves a very high fidelity very quickly. 
+
+\begin{figure}[htb]
+\centering
+\includegraphics[width=0.7\linewidth]{piecewise_polynomial_approximation_of_gaussian}
+\caption{A piecewise linear approximation using dyadic intervals.}
+\label{fig:piecewise_polynomial_approximation_of_gaussian}
+\end{figure}
+
+It is worth noting that the Python implementation provided in 
+\singlecodeline{approximate_gaussian_distribution_demonstrations.py}
+is only demonstrative, but is not particularly high performance, where the function \singlecodeline{piecewise_constant_polynomial_of_gaussian_timing}
+produces
+\begin{verbatim}
+Average time for the exact function: 8.93741e-08 s.
+Average time for the approximate function: 1.22783e-06 s.
+\end{verbatim}
+showing that our Python implementation is in approximately 15 times slower than the exact function! 
+
+To get an idea of how accurate these approximations are for different numbers of intervals and varying polynomial orders, the function \singlecodeline{plot_error_of_piecewise_polynomial_approximation_of_gaussian} computes the RMSE for various configurations, with the results shown in \Cref{fig:piecewise_polynomial_approximation_of_gaussian_rmse}.
+
+\begin{figure}[htb]
+\centering
+\includegraphics[width=0.7\linewidth]{piecewise_polynomial_approximation_of_gaussian_rmse}
+\caption{Error of piecewise polynomial approximations.}
+\label{fig:piecewise_polynomial_approximation_of_gaussian_rmse}
+\end{figure}
+
+We are not particularly discouraged by this Python result, as this approximation can be extremely performance on vector hardware, assuming a sufficiently wide vector length. The reason for this is simple, let us suppose we are working in 32-bit single-precision, and we are using the reasonably high fidelity 16-interval piecewise cubic approximation. If we store the possible coefficients for a given term in a list, then this will only require 512-bits ($ 32 \times 16 = 512 $), which is the vector width on a lot of modern hardware, such as \intel's AVX512 Skylake hardware or newer. This means that when we lookup the coefficients for a given term, instead of querying the cache, we can query a vector register, where we will only need 4 vector registers to hold all the coefficients we need. Additionally, if we are using dyadic intervals, then we can easily determine the index by reading the exponent bits of the floating-point number using a bit-wise integer operations (much quicker than how we did this in Python). This all means we never even need to look in the cache, and everything we require is held in the cache, and we only need a few simple arithmetic operations (which can use FMAs) and bit manipulations. This means that a C implementation can achieve very high speeds. 
 
 \section{The Milstein scheme}
 
