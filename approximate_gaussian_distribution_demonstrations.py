@@ -98,3 +98,10 @@ def plot_error_of_piecewise_polynomial_approximation_of_gaussian(save_figure=Fal
     xlabel('Polynomial order')
     if save_figure:
         savefig('piecewise_polynomial_approximation_of_gaussian_rmse.pdf', format='pdf', bbox_inches='tight', transparent=True)
+
+coeffs = approximations.piecewise_polynomial_coefficients_in_half_interval(inverse_gaussian_cdf, 16, 3)
+
+for j in range(coeffs.shape[0]):
+    c = coeffs[j]
+    print("const float32 poly_coef_{}[16] = {{{}}};".format(j, ', '.join(['{}'.format(i) for i in c])))
+

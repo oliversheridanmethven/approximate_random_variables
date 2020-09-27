@@ -114,7 +114,7 @@
 %\hbadness=10000 % Supresses bad box warnings
 
 % Where to search for figures. 
-\graphicspath{{../figures/}{../figures/logos/}{../figures_remote/}{../figures/hardware/}{../figures/inverse_cdf/}{../figures/simd/}{../figures/scrambling/}{../figures/mlmc/}{../figures/qmlmc/}{../figures/quantised_normals/}{../papers/}{../figures/qmlmc/milstein/}{../figures/cir/}{../figures/fpmlmc/}{../figures/lay_report/}}
+\graphicspath{{../figures/}{../figures/logos/}{../figures_remote/}{../figures/hardware/}{../figures/inverse_cdf/}{../figures/simd/}{../figures/scrambling/}{../figures/mlmc/}{../figures/qmlmc/}{../figures/quantised_normals/}{../papers/}{../figures/qmlmc/milstein/}{../figures/cir/}{../figures/fpmlmc/}{../figures/lay_report/}{../figures/misc/}}
 
 % Present the references in the order they are used.
 %\bibliographystyle{unsrtnat} % Sorted by order of use.
@@ -358,7 +358,7 @@
 % The nice headers and footers.
 \pagestyle{fancy}
 % Modifying the header and footer styles for chapters and sections. 
-\renewcommand{\chaptermark}[1]{\markboth{#1}{}}
+\renewcommand{\sectionmark}[1]{\markboth{#1}{}}
 
 % Specifying the headers and footers. 
 \fancyhf{}
@@ -433,13 +433,7 @@
 % Allows for bold face typed text fonts for computer modern font family. Useful in listings. 
 \DeclareFontShape{OT1}{cmtt}{bx}{n}{<5><6><7><8><9><10><10.95><12><14.4><17.28><20.74><24.88>cmttb10}{}
 
-%\lstset{language=C,
-%    morecomment=[l][{\color[rgb]{0.1, 0.2, 0.8}}]{\#},
-%    moredelim=[il][{\color[rgb]{0.1, 0.2, 0.8}}]{@},
-%}
 
-% cf the file /usr/local/texlive/2018/texmf-dist/tex/latex/listings/lstlang1.sty under ANSI C.
-\lstset{otherkeywords={\#pragma}}
 
 % Allowing alignat to have repeating alignment options. 
 \makeatletter
@@ -695,7 +689,7 @@
 \lstdefinestyle{C}{
     language=C,
     morekeywords={omp,simd,reduction,simdlen,declare,inline,bool,restrict,half},
-    otherkeywords={\#pragma,\_\_fp16}
+    otherkeywords={\#pragma,\_\_fp16,\#if,\#else,\#endif,\#ifdef}
 }
 
 % Making an independent symbol.

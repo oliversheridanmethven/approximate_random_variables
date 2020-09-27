@@ -1,18 +1,16 @@
 \documentclass[11pt,a4paper,oneside,english]{extarticle}
 \input{preamble}
-\makeatletter
-\fancyhead[LO]{\@title}
-\makeatother
 
 \newcommand{\singlecodeline}[1]{\\[1em]\centerline{\lstinline[basicstyle=\ttfamily]$#1$}\\[1em]}
 
 
-\title{Approximate random variables: A brief guide for practitioners}
+\title{Getting started with approximate random variables:\\ A brief guide for practitioners}
 \author{\href{mailto:oliver.sheridan-methven@maths.ox.ac.uk}{Oliver Sheridan-Methven}%
 \thanks{\href{mailto:oliver.sheridan-methven@maths.ox.ac.uk}%
 {\texttt{oliver.sheridan-methven@maths.ox.ac.uk}}}
 }
 \date{\datedayname\ \nth{\number\day} \monthname\  \number\year}
+
 
 \begin{document}
 \linenumbers
@@ -23,7 +21,14 @@
 We introduce the idea of \emph{approximate random variables} and discuss when they are useful. We provide code bundles in Python and C which demonstrate various implementations and use-cases, showing key results, and how to obtain these yourself using the code provided.  
 \end{abstract}
 
+
+\vfill
+\centerline{\includegraphics[width=\linewidth]{accuracy_and_precision}}
+\vfill
+
+\clearpage
 \tableofcontents
+\clearpage
 
 \section{Introduction}
 
@@ -149,9 +154,49 @@ The demonstrations we provide will mostly be written in Python, and a few higher
 \item The \arm \texttt{armclang} compiler.
 \item The \nvidia \texttt{nvcc} compiler.
 \end{itemize} 
-Similarly, we will assume access to appropriate hardware from either \intel, \arm, or \nvidia where appropriate. We assume when compiling that the user has also set up the default paths to find the header files and libraries by appropriately setting the environment variables \verb|LIBRARY_PATH| and \verb|C_INCLUDE_PATH|.
+Similarly, we will assume access to appropriate hardware from either \intel, \arm, or \nvidia where appropriate. We assume when compiling that the user has also set up the default paths to find the header files and libraries by appropriately setting the environment variables \verb|LD_LIBRARY_PATH| and \verb|C_INCLUDE_PATH|.
 
 We will try an keep the python packages used to a minimum, although some of the notable packages which are used within our code include: \texttt{numpy}, \texttt{pandas}, \texttt{scipy}, \texttt{mpmath}, \texttt{matplotlib}, etc. 
+
+Some notable files include
+\begin{lstfloat}[htb]
+\begin{verbatim}
+approximate_random_variables/
+|-- README.markdown
+|-- approximate_gaussian_distribution.py
+|-- approximate_gaussian_distribution_demonstrations.py
+|-- approximate_random_variables.aux
+|-- approximate_random_variables.idx
+|-- approximate_random_variables.log
+|-- approximate_random_variables.nlo
+|-- approximate_random_variables.out
+|-- approximate_random_variables.pdf
+|-- approximate_random_variables.synctex.gz
+|-- approximate_random_variables.tex
+|-- approximate_random_variables.toc
+|-- lookup_table_values.csv
+|-- make_time_gaussian_approximations.sh
+|-- mcode.sty
+|-- piecewise_constant_approximation.c
+|-- piecewise_constant_approximation.h
+|-- piecewise_constant_approximation.o
+|-- piecewise_constant_approximation_of_gaussian.pdf
+|-- piecewise_constant_lookup_table.h
+|-- piecewise_polynomial_approximation.c
+|-- piecewise_polynomial_approximation.h
+|-- piecewise_polynomial_approximation_coefficients.h
+|-- piecewise_polynomial_approximation_of_gaussian.pdf
+|-- piecewise_polynomial_approximation_of_gaussian_rmse.pdf
+|-- preamble.tex
+|-- references.bib
+|-- time_approximations
+|-- time_gaussian_approximations.c
+|-- time_gaussian_approximations.o
+`-- venv
+\end{verbatim}
+\todo[inline=true]{Update this.}
+\end{lstfloat}
+
 
 \section{Piecewise constant approximations}
 
@@ -256,13 +301,15 @@ void piecewise_constant_approximation(
 \end{lstlisting}
 \end{lstfloat}
 
-To compare this against the equivalent GSL function (\verb|gsl_cdf_ugaussian_Pinv|), there is a simple series of compiler instructions in the file \singlecodeline{make_time_gaussian_approximations.sh} which resembles 
+To compare this against the equivalent GSL function (\verb|gsl_cdf_ugaussian_Pinv|), there is a simple series of compiler instructions in the file \singlecodeline{make_time_piecewise_constant_approximations.sh} which resembles 
 \begin{verbatim}
 gcc -I. -c piecewise_constant_approximation.c
-gcc -I. -O0 -c time_gaussian_approximations.c
-gcc -I. -o time_approximations *.o -lgsl
+gcc -I. -O0 -c time_piecewise_constant_approximations.c
+gcc -I. -o time_piecewise_constant_approximations [object_files] -lgsl
 \end{verbatim}
-and produces the executable \verb|time_approximations|. On my machine, which is not vector capable, and running with minimal optimisations we obtain
+and produces the executable \singlecodeline{time_piecewise_constant_approximations}
+
+On my machine, which is not vector capable, and running with minimal optimisations, we obtain
 \begin{verbatim}
 Average time for the approximate function: 2.28712e-09 s.
 Average time for the exact (GSL) function: 2.18994e-08 s.
@@ -357,9 +404,219 @@ To get an idea of how accurate these approximations are for different numbers of
 \label{fig:piecewise_polynomial_approximation_of_gaussian_rmse}
 \end{figure}
 
-We are not particularly discouraged by this Python result, as this approximation can be extremely performance on vector hardware, assuming a sufficiently wide vector length. The reason for this is simple, let us suppose we are working in 32-bit single-precision, and we are using the reasonably high fidelity 16-interval piecewise cubic approximation. If we store the possible coefficients for a given term in a list, then this will only require 512-bits ($ 32 \times 16 = 512 $), which is the vector width on a lot of modern hardware, such as \intel's AVX512 Skylake hardware or newer. This means that when we lookup the coefficients for a given term, instead of querying the cache, we can query a vector register, where we will only need 4 vector registers to hold all the coefficients we need. Additionally, if we are using dyadic intervals, then we can easily determine the index by reading the exponent bits of the floating-point number using a bit-wise integer operations (much quicker than how we did this in Python). This all means we never even need to look in the cache, and everything we require is held in the cache, and we only need a few simple arithmetic operations (which can use FMAs) and bit manipulations. This means that a C implementation can achieve very high speeds. 
+We are not particularly discouraged by this Python result, as this approximation can be extremely performance on vector hardware, assuming a sufficiently wide vector length. The reason for this is simple, let us suppose we are working in 32-bit single-precision, and we are using the reasonably high fidelity 16-interval piecewise cubic approximation. If we store the possible coefficients for a given term in a list, then this will only require 512-bits ($ 32 \times 16 = 512 $), which is the vector width on a lot of modern hardware, such as \intel's AVX512 Skylake hardware or newer. This means that when we lookup the coefficients for a given term, instead of querying the cache, we can query a vector register, where we will only need 4 vector registers to hold all the coefficients we need. Additionally, if we are using dyadic intervals, then we can easily determine the index by reading the exponent bits of the floating-point number using a bit-wise integer operations (much quicker than how we did this in Python). This all means we never even need to look in the cache, and everything we require is held in the cache, and we only need a few simple arithmetic operations (which can use FMAs) and bit manipulations. This means that a C implementation can achieve very high speeds.
 
-\section{The Milstein scheme}
+In the file \singlecodeline{piecewise_polynomial_approximation.c} we provide several implementations of a piecewise polynomial approximation using the function \singlecodeline{piecewise_polynomial_approximation}
+where there several implementations targeting different architectures. Different implementations are used depending on the value of various macro definitions passed to the compiler, and as described in \Cref{tab:piecewise_polynomial_approximation_implementations}, where to use a cubic approximation implemented using OpenMP you would compile with the flags
+\singlecodeline{-DUSE_OPENMP_SIMD_APPROX -DPOLYNOMIAL_ORDER=3}
+
+\begin{table}[htb]
+\centering
+\begin{tabular}{lllc}
+Macro & Target & Vectors &  \verb|POLYNOMIAL_ORDER| \\
+\hline
+\verb|USE_OPENMP_SIMD_APPROX|  & Any & Any & 1, 3\\
+\verb|USE_INTEL_INTRINSICS_APPROX_CUBIC| & Intel & AVX512& 3\\
+\verb|USE_INTEL_INTRINSICS_APPROX_LINEAR| &Intel &  AVX512 & 1\\
+\verb|USE_ARM_SVE_INLINE_APPROX_CUBIC| & Arm & SVE 512-bits & 3 \\
+\end{tabular}
+\caption{Piecewise polynomial approximation implementations.}
+\label{tab:piecewise_polynomial_approximation_implementations}
+\end{table} 
+
+All of the implementations are written assuming IEEE 32-bit single precision floats, require 16 dyadic intervals, and assume vector widths of 512-bits (even for SVE). Our set of implementations is not complete nor exhaustive, and there is likely some room for more fine tuning and optimisation. Nonetheless, some can be readily copied, while we hope that others serve as useful templates for constructing other approximations. 
+
+Some condensed versions of these implementations (without many comments for brevity) are shown in \Cref{code:c:piecewise_polynomial_approximation_use_openmp_simd_approx,code:c:piecewise_polynomial_approximation_use_arm_sve_inline_approx_cubic,code:c:piecewise_polynomial_approximation_use_intel_intrinsics_approx_cubic}, demonstrating an OpenMP SIMD implementation, an \arm SVE implementation, and an \intel intrinsics implementation. 
+
+\begin{lstfloat}[h!tb]
+\begin{lstlisting}[style=C, captionpos=b, caption={Piecewise polynomial approximation implementations using OpenMP.}, label={code:c:piecewise_polynomial_approximation_use_openmp_simd_approx}]
+#include "piecewise_polynomial_approximation.h"
+#include "piecewise_polynomial_approximation_coefficients.h"
+
+// For IEEE 754
+#define N_MANTISSA_32 23
+#define FLOAT32_EXPONENT_BIAS 127
+#define FLOAT32_EXPONENT_BIAS_TABLE_OFFSET (FLOAT32_EXPONENT_BIAS - 1)
+#define TABLE_MAX_INDEX (TABLE_SIZE - 1) // Zero indexing...
+#define FLOAT32_AS_UINT32(x) (*((uint32 *) &x))  // Type-punning is performed.
+
+#pragma omp declare simd
+static inline float32 polynomial_approximation(float32 u, uint32 b);
+
+#pragma omp declare simd
+static inline uint32 get_table_index_from_float_format(float32 u);
+
+static inline float32 polynomial_approximation(float32 u, uint32 b) 
+{
+    #if (POLYNOMIAL_ORDER == 3)
+    float32 z, z_even, z_odd;
+    float32 x = u * u;
+    z_even = poly_coef_0[b] + poly_coef_2[b] * x;
+    z_odd = poly_coef_1[b] + poly_coef_3[b] * x;
+    z = z_even + z_odd * u;
+    return z;
+    #elif (POLYNOMIAL_ORDER == 1)
+    float32 z =  poly_coef_0[b] + poly_coef_1[b] * u;
+    return z;
+    #else
+    #endif
+}
+
+static inline uint32 get_table_index_from_float_format(float32 u)
+{
+    uint32 b;
+    b = FLOAT32_AS_UINT32(u) >> N_MANTISSA_32; // Keeping only the exponent.
+    b = FLOAT32_EXPONENT_BIAS_TABLE_OFFSET - b; // Getting the table index.
+    b = b > TABLE_MAX_INDEX ? TABLE_MAX_INDEX : b;  // Avoiding overflow.
+    return b;
+}
+
+#ifdef USE_OPENMP_SIMD_APPROX
+void piecewise_polynomial_approximation(
+    unsigned int n_samples,
+    const float32 *restrict input, 
+    float32 *restrict output)
+{
+    #pragma omp simd 
+    for (unsigned int i = 0; i < n_samples; i++)
+    {
+        float32 u, z;
+        u = input[i];
+        bool predicate = u < 0.5f;
+        u = predicate ? u : 1.0f - u;
+        uint32 b = get_table_index_from_float_format(u);
+        z = polynomial_approximation(u, b);
+        z = predicate ? z : -z;
+        output[i] = z;
+    }
+}
+#endif
+\end{lstlisting}
+\end{lstfloat}
+
+\begin{lstfloat}[h!tb]
+\begin{lstlisting}[style=C, captionpos=b, caption={Piecewise polynomial approximation implementations using \arm SVE inline assembly.}, label={code:c:piecewise_polynomial_approximation_use_arm_sve_inline_approx_cubic}]
+// This is not VLA, but assumes vector lengths sufficient to hold the arrays
+#ifdef USE_ARM_SVE_INLINE_APPROX_CUBIC
+void piecewise_polynomial_approximation(unsigned int n_samples, 
+    const float32 *restrict input, float32 *restrict output)
+{
+    unsigned int i;  // A dummy variable.
+    asm (""
+        "\tcbz %[n_samples], 2f                                     "  
+        "\n\tmov %[i], xzr                                          "
+        "\n\tfmov    z0.s, #5.000000000000000000e-01                "
+        "\n\tptrue   p0.s                                           "
+        "\n\tfmov    z1.s, #1.000000000000000000e+00                "
+        "\n\tld1w    {z2.s}, p0/z, [%[poly_coef_0], %[i], lsl #2]   "
+        "\n\tld1w    {z3.s}, p0/z, [%[poly_coef_1], %[i], lsl #2]   "
+        "\n\tld1w    {z4.s}, p0/z, [%[poly_coef_2], %[i], lsl #2]   "
+        "\n\tld1w    {z5.s}, p0/z, [%[poly_coef_3], %[i], lsl #2]   "
+        "\n\tmov z6.s, #126                                         "
+        "\n\tmov z7.s, %[table_max_index]                           "
+        "\n\twhilelo p1.s, xzr, %[n_samples]                        "
+        "\n1:                                                       "
+        "\n\tld1w    {z8.s}, p1/z, [%[input], %[i], lsl #2]         "
+        "\n\tfsub    z9.s, z1.s, z8.s                               "
+        "\n\tfcmgt   p2.s, p0/z, z0.s, z8.s                         "
+        "\n\tsel z8.s, p2, z8.s, z9.s                               "
+        "\n\tlsr z9.s, z8.s, #23                                    "
+        "\n\tsub z9.s, z6.s, z9.s                                   "
+        "\n\tcmplo   p3.s, p0/z, z9.s, %[table_max_index]           "
+        "\n\tsel z9.s, p3, z9.s, z7.s                               "
+        "\n\tfmul    z10.s, z8.s, z8.s                              "
+        "\n\ttbl z11.s, {z2.s}, z9.s                                "
+        "\n\ttbl z12.s, {z4.s}, z9.s                                "
+        "\n\tfmad    z12.s, p0/m, z10.s, z11.s                      "
+        "\n\ttbl z11.s, {z3.s}, z9.s                                "
+        "\n\ttbl z13.s, {z5.s}, z9.s                                "
+        "\n\tfmad    z13.s, p0/m, z10.s, z11.s                      "
+        "\n\tfmad    z13.s, p0/m, z8.s, z12.s                       "
+        "\n\tfneg    z10.s, p0/m, z13.s                             "
+        "\n\tsel z10.s, p2, z13.s, z10.s                            "
+        "\n\tst1w    {z10.s}, p1, [%[output], %[i], lsl #2]         "
+        "\n\tincw    %[i]                                           "
+        "\n\twhilelo p1.s, %[i], %[n_samples]                       "
+        "\n\tb.any 1b                                               "
+        "\n2:                                                       "
+        "\n\t                                                       "
+        : [i] "=&r" (i) 
+        : "[i]" (0), [input] "r" (input), [output] "r" (output),
+        [n_samples] "r" (n_samples), [poly_coef_0] "r" (poly_coef_0),
+        [poly_coef_1] "r" (poly_coef_1), [poly_coef_2] "r" (poly_coef_2),
+        [poly_coef_3] "r" (poly_coef_3), [table_max_index] "i" (TABLE_MAX_INDEX)
+        : "memory", "cc", "p0", "p1", "p2", "p3", "z0", "z1", "z2", "z3", "z4",
+        "z5", "z6", "z7", "z8", "z9", "z10", "z11", "z12", "z13"
+        );
+}
+#endif
+\end{lstlisting}
+\end{lstfloat}
+
+\begin{lstfloat}[h!tb]
+\begin{lstlisting}[style=C, captionpos=b, caption={Piecewise polynomial approximation implementations using \intel intrinsics.}, label={code:c:piecewise_polynomial_approximation_use_intel_intrinsics_approx_cubic}]
+// Using AVX512 intrinsics. 
+#ifdef USE_INTEL_INTRINSICS_APPROX_CUBIC
+void piecewise_polynomial_approximation(unsigned int n_samples, 
+    const float32 *restrict input, float32 *restrict output)
+{
+    unsigned int n_iterations = n_samples / VECTOR_LENGTH;  
+    /* Loading in the constants. */
+    __m512 half_float = _mm512_set1_ps(0.5f);
+    __m512 one_float = _mm512_set1_ps(1.0f);
+    __m512 minus_zero_float = _mm512_set1_ps(-0.0f);  // For negation.
+    __m512i exponent_bias_table_offset = 
+        _mm512_set1_epi32(FLOAT32_EXPONENT_BIAS_TABLE_OFFSET);
+    __m512i table_max_index = _mm512_set1_epi32(TABLE_MAX_INDEX);
+    __m512 coef_0 = _mm512_load_ps(poly_coef_0);  
+    __m512 coef_1 = _mm512_load_ps(poly_coef_1);
+    __m512 coef_2 = _mm512_load_ps(poly_coef_2);
+    __m512 coef_3 = _mm512_load_ps(poly_coef_3);
+    __m512 c_0, c_1, c_2, c_3;
+    __m512i c;  // A useful temporary variable.
+    __m512 u, z, z_even, z_odd, u_squared;
+    __m512i b;
+    for (int i = 0, offset = 0; i < n_iterations; i++, offset += VECTOR_LENGTH)
+    {
+        // Loading in the data.
+        u = _mm512_loadu_ps(input + offset);
+        // Forming the predicate.
+        __mmask16 predicate = _mm512_cmplt_ps_mask(half_float, u);
+        // Transforming the input to [0, 0.5].
+        u = _mm512_mask_sub_ps(u, predicate, one_float, u);
+        b = _mm512_castps_si512(u);  
+        // Getting the indices.
+        b = _mm512_srli_epi32(b, N_MANTISSA_32);
+        b = _mm512_sub_epi32(exponent_bias_table_offset, b);
+        b = _mm512_min_epi32(b, table_max_index);
+        // Obtaining the relevant coefficients.
+        c = _mm512_castps_si512(coef_0);
+        c = _mm512_permutexvar_epi32(b, c);
+        c_0 = _mm512_castsi512_ps(c);
+        c = _mm512_castps_si512(coef_1);
+        c = _mm512_permutexvar_epi32(b, c);
+        c_1 = _mm512_castsi512_ps(c);
+        c = _mm512_castps_si512(coef_2);
+        c = _mm512_permutexvar_epi32(b, c);
+        c_2 = _mm512_castsi512_ps(c);
+        c = _mm512_castps_si512(coef_3);
+        c = _mm512_permutexvar_epi32(b, c);
+        c_3 = _mm512_castsi512_ps(c);
+        // Building the polynomial.
+        u_squared = _mm512_mul_ps(u, u);
+        z_even = _mm512_fmadd_ps(c_2, u_squared, c_0);
+        z_odd = _mm512_fmadd_ps(c_3, u_squared, c_1);
+        z = _mm512_fmadd_ps(z_odd, u, z_even);
+        z = _mm512_mask_xor_ps(z, predicate, minus_zero_float, z); // Negation.
+        // Writing the result.
+        _mm512_storeu_ps(output + offset, z);
+    }
+}
+#endif
+\end{lstlisting}
+\end{lstfloat}
+
+
 
 \section{The non-central $ \chi^2 $-distribution}
 

@@ -8,7 +8,7 @@
 //      distribution function using a piecewise constant function.
 
 #include "piecewise_constant_approximation.h"
-#include "piecewise_constant_lookup_table.h"
+#include "piecewise_constant_approximation_coefficients.h"
 #include <omp.h>
 
 void piecewise_constant_approximation(unsigned int n_samples, const double *restrict input, double *restrict output)
