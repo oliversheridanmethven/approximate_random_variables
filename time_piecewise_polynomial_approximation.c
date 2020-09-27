@@ -7,6 +7,10 @@
 //      Timing the performance for approximations to the
 //      Gaussian's inverse cumulative distribution function.
 
+#ifdef COMPARE_AGAINST_MKL
+#include <mkl.h>
+#endif
+
 #include <stdlib.h>
 #include <stdio.h>
 #include <math.h>
@@ -49,6 +53,25 @@ int main(int argc, char **argv)
     elapsed_time = difftime(clock(), run_time) / CLOCKS_PER_SEC;
     printf("Average time for the exact (GSL) function: %g s.\n", elapsed_time / total_number_of_samples);
 
+    #ifdef COMPARE_AGAINST_MKL
+    run_time = clock();  // Intel high accuracy (HA)
+    for (unsigned int batch = 0; batch < n_batches; batch++)
+    {
+        vsCdfNormInv(samples_in_batch, input, output);
+    }
+    elapsed_time = difftime(clock(), run_time) / CLOCKS_PER_SEC;
+    printf("Average time for the exact (Intel HA) function: %g s.\n", elapsed_time / total_number_of_samples);
 
+
+    const MKL_UINT64 mode_lower_accuracy = (VML_LA | VML_FTZDAZ_OFF | VML_ERRMODE_DEFAULT);
+    run_time = clock();  // Intel low accuracy (LA)
+    for (unsigned int batch = 0; batch < n_batches; batch++)
+    {
+        vmsCdfNormInv(samples_in_batch, input, output, mode_lower_accuracy);
+    }
+    elapsed_time = difftime(clock(), run_time) / CLOCKS_PER_SEC;
+    printf("Average time for the exact (Intel LA) function: %g s.\n", elapsed_time / total_number_of_samples);
+
+    #endif
 
 }

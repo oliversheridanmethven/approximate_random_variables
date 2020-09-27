@@ -17,7 +17,7 @@
 int main(int argc, char **argv)
 {
     /* We don't want to hold to many numbers in memory at once, so we break them into batches. */
-    unsigned int samples_in_batch = 100000;
+    unsigned int samples_in_batch = 512 * 1000;
     unsigned int n_batches = 1000;
     unsigned int total_number_of_samples = samples_in_batch * n_batches;
     double input[samples_in_batch];
@@ -48,7 +48,5 @@ int main(int argc, char **argv)
     }
     elapsed_time = difftime(clock(), run_time) / CLOCKS_PER_SEC;
     printf("Average time for the exact (GSL) function: %g s.\n", elapsed_time / total_number_of_samples);
-
-
 
 }
