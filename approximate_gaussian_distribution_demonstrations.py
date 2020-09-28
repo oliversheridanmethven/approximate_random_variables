@@ -12,9 +12,9 @@ Description:
 """
 import matplotlib as mpl
 import matplotlib.pylab as plt
-from matplotlib.pylab import plot, legend, savefig, xscale, yscale, ylabel, xlabel
+from matplotlib.pylab import plot, legend, savefig, yscale, ylabel, xlabel
 from matplotlib.pylab import clf as clear_plot
-from numpy import nan, linspace
+from numpy import linspace
 from scipy.stats import norm as gaussian
 from scipy.stats import uniform
 from timeit import default_timer as timer
@@ -80,6 +80,7 @@ def piecewise_constant_polynomial_of_gaussian_timing():
         elapsed_time = timer() - start_time
         print("Average time for the {} function: {:g} s.".format(func_name, elapsed_time / total_number_of_samples))
 
+
 def plot_error_of_piecewise_polynomial_approximation_of_gaussian(save_figure=False):
     """ Plots the RMSE of various polynomial approximations. """
     polynomial_orders = range(6)
@@ -89,7 +90,7 @@ def plot_error_of_piecewise_polynomial_approximation_of_gaussian(save_figure=Fal
         rmse = [None] * len(polynomial_orders)
         for polynomial_order in polynomial_orders:
             approximate_inverse_gaussian_cdf = approximations.construct_symmetric_piecewise_polynomial_approximation(inverse_gaussian_cdf, n_intervals, polynomial_order)
-            discontinuities = [0.5 ** (i+2) for i in range(n_intervals - 1)]  # Makes the numerical integration involved in the RMSE easier.
+            discontinuities = [0.5 ** (i + 2) for i in range(n_intervals - 1)]  # Makes the numerical integration involved in the RMSE easier.
             rmse[polynomial_order] = approximations.expected_value_in_interval(lambda u: (inverse_gaussian_cdf(u) - approximate_inverse_gaussian_cdf(u)) ** 2, 0, 0.5, points=discontinuities) ** 0.5
         plot(polynomial_orders, rmse, 'o--', label=n_intervals)
     legend(title="Intervals")
@@ -98,3 +99,17 @@ def plot_error_of_piecewise_polynomial_approximation_of_gaussian(save_figure=Fal
     xlabel('Polynomial order')
     if save_figure:
         savefig('piecewise_polynomial_approximation_of_gaussian_rmse.pdf', format='pdf', bbox_inches='tight', transparent=True)
+
+
+if __name__ == '__main__':
+    print("Plotting a piecewise constant approximation to the Gaussian distribution.")
+    plot_piecewise_constant_approximation_of_gaussian()
+    print("Cost of the exact function compared to the approximation.")
+    piecewise_constant_approximation_of_gaussian_timing()
+    print("Plotting a piecewise polynomial approximation to the Gaussian distribution.")
+    plot_piecewise_polynomial_approximation_of_gaussian()
+    print("Cost of the exact function compared to the approximation.")
+    piecewise_constant_polynomial_of_gaussian_timing()
+    print("Plotting the error of a peicewise constant approximation to the Gaussian distribution.")
+    plot_error_of_piecewise_polynomial_approximation_of_gaussian
+    print("Cost of the exact function compared to the approximation.")

@@ -9,7 +9,6 @@ Description:
 """
 
 from approximate_gaussian_distribution import piecewise_polynomial_coefficients_in_half_interval, construct_index_of_dyadic_interval
-import matplotlib.pylab as plt
 import numpy as np
 from scipy.stats import ncx2, norm, chi2
 from scipy.optimize import root_scalar
@@ -118,13 +117,3 @@ def construct_inverse_non_central_chi_squared_interpolated_polynomial_approximat
         return non_centrality + dof + 2.0 * np.sqrt(non_centrality + dof) * interpolated_function(u)
 
     return inverse_non_central_chi_squared_interpolated_polynomial_approximation
-
-
-if __name__ == '__main__':
-    u = np.linspace(0.0, 1.0, 100)[1:-1]
-    dof = 0.1
-    ncx2_approx = construct_inverse_non_central_chi_squared_interpolated_polynomial_approximation(dof=dof, polynomial_order=1, n_intervals=16, n_interpolating_functions=16)
-    non_centrality = 10.0
-    plt.clf()
-    plt.plot(u, ncx2.ppf(u, df=dof, nc=non_centrality), 'k--')
-    plt.plot(u, ncx2_approx(u, non_centrality=non_centrality), 'r-')

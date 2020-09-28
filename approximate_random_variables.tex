@@ -4,12 +4,15 @@
 \newcommand{\singlecodeline}[1]{\\[1em]\centerline{\lstinline[basicstyle=\ttfamily]$#1$}\\[1em]}
 
 
-\title{Getting started with approximate random variables:\\ A brief guide for practitioners}
+\title{\bfseries Getting started with approximate random variables:\\[0.5em] a brief guide for practitioners}
 \author{\href{mailto:oliver.sheridan-methven@maths.ox.ac.uk}{Oliver Sheridan-Methven}%
 \thanks{\href{mailto:oliver.sheridan-methven@maths.ox.ac.uk}%
 {\texttt{oliver.sheridan-methven@maths.ox.ac.uk}}}
 }
 \date{\datedayname\ \nth{\number\day} \monthname\  \number\year}
+
+% Allowing use to make some highlighted entries in Verbatim. 
+\newcommand\highlightverb[1]{\underline{\textbf{#1}}}
 
 
 \begin{document}
@@ -34,18 +37,65 @@ We introduce the idea of \emph{approximate random variables} and discuss when th
 \pagestyle{fancy}
 
 \clearpage
+\section{Pre-requisites for the demonstrations}
+
+The demonstrations we provide will mostly be written in Python, and a few higher performance versions will be in C. For the Python code, we will be using Python~2, although it should all be easily portable to Python~3 with minimal modification. The Python files can either be run from a Python IDLE, or from the command line, whichever is easier. We assume a Unix or GNU/Linux based operating system. The C files will come with their own makefiles\footnote{We actually provide these as ``\verb|.sh|'' files, which can be readily adapted or copied directly to the terminal.}, and will usually assume access to the \texttt{gcc} compiler. Some of the C programs are not hardware agnostic, and will require altering the makefiles in places. For some applications, we may be comparing performance against \intel or \nag libraries, and assessing performance on \intel, \arm, or even \nvidia hardware. As a minimum, we will require the user has 
+\begin{itemize}
+\item The GNU scientific library (GLS) and the \texttt{gcc} compiler.
+\end{itemize}
+Further to this, some of the more advanced demonstrations may require any of the following:
+\begin{itemize}
+\item The \intel maths kernel library (MKL), the vector statistics library (VSL), and the \texttt{icc} compiler. 
+\item The \nag library. 
+\item The \arm \texttt{armclang} compiler.
+\item The \nvidia \texttt{nvcc} compiler.
+\end{itemize} 
+Similarly, we will assume access to appropriate hardware from either \intel, \arm, or \nvidia where appropriate. We assume when compiling that the user has also setup the default paths to find the required header files and libraries by appropriately setting the environment variables \verb|LIBRARY_PATH|, \verb|LD_LIBRARY_PATH|, and \verb|C_INCLUDE_PATH|.
+
+We will try an keep the Python packages used to a minimum, although some of the notable packages which are used within our code include: \texttt{numpy}, \texttt{pandas}, \texttt{scipy}, \texttt{matplotlib}, \texttt{progressbar2}, \texttt{bisect}, \texttt{timeit}, etc. 
+
+To give an idea of the more relevant files contained, the user should expect a file structure similar to:
+\begin{lstfloat}[H]
+\begin{Verbatim}[commandchars=\\\{\}]
+approximate_random_variables/
+|-- ... \highlightverb{The files to read} ...
+|-- approximate_random_variables.pdf
+|-- ... \highlightverb{The Python approximations}  ...
+|-- approximate_gaussian_distribution.py
+|-- approximate_gaussian_distribution_demonstrations.py
+|-- approximate_non_central_chi_squared.py
+|-- approximate_non_central_chi_squared_demonstrations.py
+|-- non_central_chi_squared.m
+|-- non_central_chi_squared.py
+|-- ... \highlightverb{The C approximations} ...
+|-- piecewise_constant_approximation.c
+|-- piecewise_constant_approximation.h
+|-- piecewise_constant_approximation_coefficients.h
+|-- piecewise_polynomial_approximation.c
+|-- piecewise_polynomial_approximation.h
+|-- piecewise_polynomial_approximation_coefficients.h
+|-- time_piecewise_constant_approximation.c
+|-- time_piecewise_polynomial_approximation.c
+|-- ... \highlightverb{The makefiles} ...
+|-- make_time_piecewise_constant_approximations.sh
+|-- make_time_piecewise_polynomial_approximations.sh
+`-- ... \highlightverb{etc.} ...
+\end{Verbatim}
+\end{lstfloat}
+
+\clearpage
 \section{Introduction}
 
-This report is intended to be a relatively light introduction to approximate random variables, designed primarily for an industry practitioner, but also applicable to scientists who want to achieve better code performance. In this introduction, we will give a gentle introduction to random numbers and approximate random variables, and discuss one of their major areas of application. We will give a light discussion of what's going on from a mathematical perspective, and provide code demonstrating how to implement these ideas. Most of the code be written using Python in an easy to follow manner (not particularly focused on performance), and where appropriate we will also provide some high performance code written in C. We encourage readers to use either the code provided as is, or adapt it to their own needs as appropriate. The code largely demonstrative, so we make no guarantees about its performance or correctness. 
+This report is intended to be a relatively light introduction to approximate random variables, designed primarily for an industry practitioner, but also applicable to scientists who want to achieve better code performance. In this introduction, we will give a gentle introduction to random numbers and approximate random variables, and discuss one of their major areas of application. We will give a light discussion of what's going on from a mathematical perspective, and provide code demonstrating how to implement these ideas. Most of the code is written using Python in an easy to follow manner (not particularly focused on performance), and where appropriate we will also provide some higher performance code written in C. We encourage readers to use either the code provided as it is, or adapt it to their own needs as appropriate. The code is largely demonstrative, so we make no guarantees about its performance or correctness. The code presented in the report will largely be stripped of much of its documentation and comments, and for a more descriptive version we recommend seeing the underlying source code files. 
 
 \subsection{Where can I learn more?}
 \label{sec:where_can_i_learn_more}
 
 For people who are more comfortable with maths and want to know more, there are several other sources of reference material available, of various degrees of technicality. From easiest to hardest there is:
 \begin{itemize}
-\item \emph{High-performance low-precision vectorised arithmetic and its applications}, Oliver Sheridan-Methven, 2020, 2~pages. This is an extremely brief overview of my research, giving a light overview of the core idea and some key findings, aimed at a very general reader with little technical knowledge. 
+\item \emph{High-performance low-precision vectorised arithmetic and its applications}, Oliver Sheridan-Methven, 2020, 2~pages. This is an extremely brief overview of my research with Mike Giles, giving a light overview of the core idea and some key findings, aimed at a very general reader with little technical knowledge. 
 
-\item \emph{High-performance low-precision vectorised arithmetic and its applications}, Oliver Sheridan-Methven, 2020, 8~pages. This is a very brief overview of my research, going into some more detail than the 2~page version. This is aimed at those with a bit more technical knowledge. 
+\item \emph{High-performance low-precision vectorised arithmetic and its applications}, Oliver Sheridan-Methven, 2020, 8~pages. Another brief overview going into some more detail than the 2~page version. This is aimed at those with a bit more technical knowledge. 
 
 \item \emph{Analysis of nested multilevel Monte Carlo using approximate Normal random variables}, Mike Giles and Oliver Sheridan-Methven, 2020,  approximately 25 pages. This is a journal article currently in preparation and due to be released very soon. This is aimed at a technical reader, and goes into depth with the main technical idea of our research and how to apply it, and is suitable for readers with a science degree.
 
@@ -55,12 +105,11 @@ For people who are more comfortable with maths and want to know more, there are 
 
 \subsection{What are random variables?}
 
-Random numbers are part of everyday life, whether rolling dice, reading stock prices, or even sending encrypted messages, random numbers are a part of all of these. As random numbers occur so frequently in the world around us, they also play a central role in various branches of science and mathematics. Usually, when some random quantity appears is part of a scientific equation or mathematical formula, its given the more formal technical name of a being a \emph{random variable}, which is the name we'll use going forward. Studying how random variables behave is central to many branches of science, and has applications in gambling, finance, computer simulations, weather prediction, security and encryption, artificial intelligence, etc., the list goes on and on.  
+Random numbers are part of everyday life, whether rolling dice, reading stock prices, or even sending encrypted messages; random numbers are a part of all of these. As random numbers occur so frequently in the world around us, they also play a central role in various branches of science and mathematics. Usually, when some ``random quantity'' appears as part of a scientific equation or mathematical formula, its given the more formal technical name of a being a \emph{random variable}, which is the name we'll use going forward. Studying how random variables behave is central to many branches of science, and has applications in: gambling, finance, computer simulations, weather prediction, security and encryption, artificial intelligence, etc., the list goes on and on.  
 
-Computers often need random numbers, either for running simulations or encrypting data. However, computers don't behave randomly, and follow a very strict set of rules and instructions. So for a computer to spit out a sequence random numbers, it follows a very long and complicated set of steps, such that the numbers it spits out, while technically not random, appear random enough for most purposes. In fact, producing high quality random numbers can be a time consuming task for a computer.
+Computers often need random numbers, either for running simulations, encrypting data, or possibly something else. However, computers don't behave randomly, and follow a very strict set of rules and instructions. So for a computer to spit out a sequence random numbers, it follows a very long and complicated set of steps, such that the numbers it spits out, while technically not random, appear random enough for most purposes. In fact, producing high quality random numbers can be a time consuming task for a computer.
 
-The problem is made even harder when we consider that there are different varieties of random variables. In science, we say a given variety of random variables follows a \emph{distribution}, which encompasses a particular style of random numbers. Some of these you are likely familiar with and already have names, where some common distributions include:
-
+The problem is made even harder when we consider that there are different varieties of random variables. In science, we say a given variety of random variables follows a \emph{distribution}, which encompasses a particular style and flavour of random numbers. Some of these you are likely already familiar with and  have names. Some common distributions include:
 \begin{itemize}
 \item The Bernoulli distribution (e.g.\ a coin toss).
 \item The discrete uniform distribution (e.g.\ the roll of a die).
@@ -69,11 +118,11 @@ The problem is made even harder when we consider that there are different variet
 \item The Gaussian distribution (e.g.\ average height of adults).
 \end{itemize}
 
-Computers by default are usually only able to produce the uniform distributions, and there are various methods to get other more complicated distributions from these simpler ones. Amongst these methods, one which is particularly robust and versatile is known as \emph{the inverse transform method}.
+Computers by default are usually only able to produce the uniform distributions, and there are various methods to get the other more complicated distributions from these simpler ones. Amongst these methods, one which is particularly robust and versatile is known as \emph{the inverse transform method}.
 
 \subsubsection{The inverse transform method}
 
-For some distribution of interest, let's suppose we know where the percentiles of the distribution lie, e.g. 50\% of the values are below 0, 70\% are below 1, 90\% are below 2, 99\% are below 3, 99.99\% are below  4, etc. We can easily sample a uniform distribution, but how can we sample from this more interesting distribution? The way the inverse transform method works is surprisingly simple. Sample a uniform random variable, giving a number in 0--100, treat this as a percentile, and see what value of the distribution this percentile corresponds to. The number corresponding to this particular percentile is a random variable which exactly follows the desired distribution. There are only two things you need for this: access to uniform random numbers (which almost all computers have), and a formula for the percentiles. Repeating this for several uniformly distributed random variables results produces random variables from the desired distribution, where a simple demonstration is shown in \Cref{fig:inverse_cdf_transformation_method_schematic_simplified}.
+For some distribution of interest, let's suppose we know where the percentiles of the distribution are, for example: 50\% of the values are below 0, 70\% are below 1, 90\% are below 2, 99\% are below 3, 99.99\% are below  4, etc. We can easily sample a uniform distribution, but how can we sample from this more interesting distribution? The way the inverse transform method works is surprisingly simple. Sample a uniform random variable, giving a number in 0--100, treat this as a percentile, and see what value of the distribution this percentile corresponds to. The number corresponding to this particular percentile is a random variable which exactly follows the desired distribution. There are only two things you need for this: access to uniform random numbers (which almost all computers have), and a formula for the percentiles. Repeating this for several uniformly distributed random variables produces random variables from the desired distribution, where a simple demonstration is shown in \Cref{fig:inverse_cdf_transformation_method_schematic_simplified}.
 
 \begin{figure}[htb]
 \centering
@@ -87,9 +136,9 @@ The technical name for the expression which takes a percentile and determines wh
 \subsection{What are approximate random variables?}
 \label{sec:what_are_approximate_random_variables}
 
-So far we have painted a trouble free picture for producing random variables from whatever distribution interests by using the inverse transform method. But suppose we have an application, such as a computer simulation, which requires lots of random variables from a distribution. As an example, it is not uncommon for financial simulations of stock markets to use anywhere from millions to trillions of random numbers to predict the value of various financial products. If this is the case, then we want to process these random numbers as quick as possible. Unfortunately, while the inverse transform method is versatile, if you do it exactly, it can be very slow and struggle to perform well on the latest hardware. This is where our research proposes the following idea: don't do it exactly, do it approximately. 
+So far we have painted a trouble free picture for producing random variables from whatever distribution interests us by using the inverse transform method. But suppose we have an application, such as a computer simulation, which requires lots of random variables from a distribution. As an example, it is not uncommon for financial simulations of stock markets to use anywhere from millions to trillions of random numbers to predict the value of various financial products. If this is the case, then we want to process these random numbers as quick as possible. Unfortunately, while the inverse transform method is versatile, if you do it exactly, it can be very slow and struggle to perform well on the latest hardware. This is where our research proposes the following idea: don't do it exactly, do it approximately. 
 
-To see where we make our approximations, lets take a very important and ubiquitous distribution known as the Gaussian distribution, which is sometimes called the Normal distribution or the bell curve. The Gaussian's inverse cumulative distribution function is plotted in \Cref{fig:inverse_cdf_function_tails_simplified},
+To see where we make our approximations, let's take a very important and ubiquitous distribution known as the Gaussian distribution, which is sometimes called the Normal distribution or the bell curve. The Gaussian's inverse cumulative distribution function is plotted in \Cref{fig:inverse_cdf_function_tails_simplified},
 where we indicating several random positions the function might evaluate. Most of the inputs land near the centre of the function, where it's nearly a straight line and easy to evaluate. However, sometimes values land near the edges, in the more difficult shaded region where the function shoots off the edges of \Cref{fig:inverse_cdf_function_tails_simplified}, and is much harder to evaluate. While these difficult scenarios are infrequent, the greater the degree of parallelisation, the more certain it is that such values are unavoidable. It is these types of edge values which contaminate an otherwise easy calculation, leading to a loss in performance. 
 
 \begin{figure}[htb]
@@ -98,7 +147,7 @@ where we indicating several random positions the function might evaluate. Most o
 \centering
 \includegraphics[width=\linewidth]{inverse_cdf_function_tails_simplified}
 \begin{minipage}[t]{0.9\linewidth}
-\caption{The inverse Gaussian cumulative distribution function, and several possible random inputs (\CIRCLE). The more difficult regions are shaded, where some random inputs will unfortunately land ({\color{red}\CIRCLE})}
+\caption{The Gaussian's inverse cumulative distribution function, and several possible random inputs (\CIRCLE). The more difficult regions are shaded, where some random inputs will unfortunately land ({\color{red}\CIRCLE})}
 \label{fig:inverse_cdf_function_tails_simplified}
 \end{minipage}
 \end{subfigure}%
@@ -123,9 +172,11 @@ In our experiments, we pitted various exact implementations (some proprietary), 
 \subsection{When would I use approximate random variables?}
 \label{sec:when_would_i_use_approximate_random_variables}
 
-In our research we investigated and analysed the consequences of using approximate random variables in the context of running computer simulations. This is extremely common in finance, and also used in weather forecasting. As we mentioned, various other applications use random numbers and could likely benefit from using approximate random numbers, although there remains work to be done to investigate and analyse all of the remaining use-cases.
+In our research we investigated and analysed the consequences of using approximate random variables in the context of running computer simulations. This is extremely common in finance, weather forecasting, and other fields. As we mentioned, various other applications use random numbers and could likely benefit from using approximate random numbers, although there remains work to be done to investigate and analyse all of the remaining use-cases.
 
-One particularly prolific scientific method is known as \emph{Monte Carlo}, and it heavily used for financial simulations, and requires vast quantities of random numbers, usually from the Gaussian distribution. The Monte Carlo method can be described as: run lots of simulations of whatever is of interest, compute the average of what you see, and that's approximately the answer. The more simulations you run the more accurate your answer is. For most people, computing averages is easy, but how does someone ``simulate''? Running a simulation is asking a computer to do the following: given where something is now, and knowing how it behaves, guess where it will be in the future? When we say we know how the system behaves, it means we have an expression which accurately describes where it will evolve. This expression though is only accurate at predicting a tiny bit into the future. To predict far into the future, one method is to split this up into lots of smaller intermediate predictions. We then predict from one step to the next, one after another, until you're at the end. 
+One particularly prolific scientific method is known as \emph{Monte Carlo}. It is heavily used for financial simulations, and requires vast quantities of random numbers, usually from the Gaussian distribution. The Monte Carlo method can be described as: run lots of simulations of whatever is of interest, compute the average of what you see, and that's approximately the answer. The more simulations you run the more accurate your answer is. 
+
+For most people, computing averages is easy, but how does someone ``simulate''? Running a simulation is asking a computer to do the following: given where something is now, and knowing how it behaves, guess where it will be in the future? When we say we know how the system behaves, it means we have an expression which accurately describes how it will evolve. This expression though is only accurate at predicting a tiny bit into the future. To predict far into the future, one method is to split this up into lots of smaller intermediate predictions. We then predict from one step to the next, one after another, until you're at the end. 
 
 
 The simplest method of simulating something step-by-step is known as the \emph{Euler scheme}, and if the evolution is subject to random influences it's the \emph{Euler-Maruyama scheme}. There are two factors influencing the evolution: one isn't random, and the other is (e.g.~traders buying and selling stocks randomly influences their price). To simulate the random bit we need a random number, and the Euler-Maruyama scheme needs them from a Gaussian distribution. Some example Euler-Maruyama simulations are shown in \Cref{fig:example_simulation}.
@@ -144,76 +195,30 @@ Modifying the Euler-Maruyama scheme to substitute exact random numbers with appr
 
 \subsection{How can I get started using them?}
 
-All you need to get started using approximate random variables is an approximation and a problem to solve. In the code provided we will give some examples of approximating the Gaussian distribution, where we've taken some time and effort to ensure our approximations are fast. We also deploy these on some example problems to give a demonstration of how to use these ideas. Before using approximate random variables in your own setting, we encourage you go through some of the demonstrations provided to give a better idea of how to incorporate and adapt them as necessary into your own problem. We also show how one of our approximations to the Gaussian distribution can be adapted to approximate another distribution, and we expect our approximations can be used as templates for approximating several other distributions. 
+All you need to get started using approximate random variables is an approximation and a problem to solve. In the code provided we will give some examples of approximating the Gaussian distribution, where we've taken some time and effort to ensure our C approximations are fast. 
+
+Before using approximate random variables in your own setting, we encourage you go through some of the demonstrations provided to give a better idea of how to incorporate and adapt them as necessary into your own problem. We also show how one of our approximations to the Gaussian distribution can be adapted to approximate another distribution (the non-central $ \chi^2 $-distribution), and we expect our approximations can be used as templates for approximating several other distributions. 
 
 Approximate random variables are as their name suggests: approximate. Switching to approximate random variables is easy, and can gain you huge amounts of speed. Unfortunately, swapping the exact random variables for the approximate ones and doing nothing else, while easy to code up, will introduce some error. However, with a little extra effort, by utilising a technique known as \emph{multilevel Monte Carlo}, you can counteract this error without compromising speed, and obtain the best of both worlds. This can be a little technical, and we refer a reader interested in the technicalities of the method to some of the additional material mentioned in \Cref{sec:where_can_i_learn_more}.
 
 
-\subsection{How do I run these demonstrations?}
-
-The demonstrations we provide will mostly be written in Python, and a few higher performance versions will be in C. For the Python code, we will be using Python~2, although it should all be easily portable to Python~3 with minimal modification. The Python files can either be run from a Python IDLE, or from the command line, whichever is easier. We assume a Unix or GNU/Linux based operating system. The C files will come with their own makefiles, and will usually assume access to the \texttt{gcc} compiler. Some of the C programs are not hardware agnostic, and will require altering the makefiles in places. For some applications, we may be comparing performance against \intel or \nag libraries, and assessing performance on \intel, \arm, or even \nvidia hardware. Thus will assume the user has access to:
-\begin{itemize}
-\item The GNU scientific library (GLS) and the \texttt{gcc} compiler.
-\item The \intel maths kernel library (MKL), the vector statistics library (VSL), and the \texttt{icc} compiler. 
-\item The \nag library. 
-\item The \arm \texttt{armclang} compiler.
-\item The \nvidia \texttt{nvcc} compiler.
-\end{itemize} 
-Similarly, we will assume access to appropriate hardware from either \intel, \arm, or \nvidia where appropriate. We assume when compiling that the user has also set up the default paths to find the header files and libraries by appropriately setting the environment variables \verb|LIBRARY_PATH, |\verb|LD_LIBRARY_PATH|, and \verb|C_INCLUDE_PATH|.
-
-We will try an keep the Python packages used to a minimum, although some of the notable packages which are used within our code include: \texttt{numpy}, \texttt{pandas}, \texttt{scipy}, \texttt{mpmath}, \texttt{matplotlib}, etc. 
-
-Some notable files include
-\begin{lstfloat}[htb]
-\begin{verbatim}
-approximate_random_variables/
-|-- README.markdown
-|-- approximate_gaussian_distribution.py
-|-- approximate_gaussian_distribution_demonstrations.py
-|-- approximate_random_variables.aux
-|-- approximate_random_variables.idx
-|-- approximate_random_variables.log
-|-- approximate_random_variables.nlo
-|-- approximate_random_variables.out
-|-- approximate_random_variables.pdf
-|-- approximate_random_variables.synctex.gz
-|-- approximate_random_variables.tex
-|-- approximate_random_variables.toc
-|-- lookup_table_values.csv
-|-- make_time_gaussian_approximations.sh
-|-- mcode.sty
-|-- piecewise_constant_approximation.c
-|-- piecewise_constant_approximation.h
-|-- piecewise_constant_approximation.o
-|-- piecewise_constant_approximation_of_gaussian.pdf
-|-- piecewise_constant_lookup_table.h
-|-- piecewise_polynomial_approximation.c
-|-- piecewise_polynomial_approximation.h
-|-- piecewise_polynomial_approximation_coefficients.h
-|-- piecewise_polynomial_approximation_of_gaussian.pdf
-|-- piecewise_polynomial_approximation_of_gaussian_rmse.pdf
-|-- preamble.tex
-|-- references.bib
-|-- time_approximations
-|-- time_gaussian_approximations.c
-|-- time_gaussian_approximations.o
-`-- venv
-\end{verbatim}
-\todo[inline=true]{Update this.}
-\end{lstfloat}
 
 \clearpage
-\section{Piecewise constant approximations}
+\section{The Gaussian distribution}
 
-We mentioned earlier in \Cref{sec:what_are_approximate_random_variables} an approximation to the Gaussian's inverse cumulative distribution function which was comprised of a series of flat lines of equal width. The mathematical name for this approximation is a \emph{piecewise constant function} which uses \emph{equipartitioned intervals}, although we will just abbreviate this as the piecewise constant function. To construct the approximation, we first have to decide, how many intervals do we need, and what value should be use as the constant for each interval. 
+The bulk of our approximations have been centred on approximating Gaussian random variables, as these are used in the Euler-Maruyama scheme (and several other schemes), and the Gaussian's analytic properties are sufficiently tractable that theoretical results could be proved for our approximations. As such, we frame our discussions of approximations around   approximating the Gaussian distribution, for added utility and tractability.
+
+\subsection{Piecewise constant approximations}
+
+We mentioned earlier in \Cref{sec:what_are_approximate_random_variables} an approximation to the Gaussian's inverse cumulative distribution function which was comprised of a series of flat lines of equal width. The mathematical name for this approximation is a \emph{piecewise constant function} which uses \emph{equipartitioned intervals}, although we will just abbreviate this as the piecewise constant function. To construct the approximation, we first have to decide, how many intervals do we need, and what value should be use as the constant for each interval?
 
 The number of intervals is the easy bit, so let's say we have $ N $ of them, where in most of our approximations we found $ N = 1028 $ to be sufficiently high to obtain a reasonable fidelity approximation. As for what value to use, a sensible choice is whatever you would expect to get from the exact function. The exact inverse cumulative distribution function for the Gaussian distribution is usually denoted $ \Phi^{-1} $. Denoting the start and end of a particular interval as $ a $ and $ b $ respectively, where $ a < b $, the value used for a particular interval is
 \begin{equation}
 \dfrac{1}{b - a}\int_a^b \Phi^{-1}(x) \dd{x} \equiv \dfrac{1}{b - a} \int_{\Phi^{-1}(a)}^{\Phi^{-1}(b)} \dfrac{z}{\sqrt{2\pi}} \exp(-\dfrac{z^2}{2}) \dd{z}.
 \end{equation}
-Both these integrals are equivalent to one another, where $ \Phi $ is the Gaussian's cumulative distribution function (i.e.~not the \emph{inverse} CDF). Both are easy for a computer to calculate, where the second is sometimes more convenient for intervals touching the edge. 
+Both these integrals are equivalent to one another, where $ \Phi $ is the Gaussian's cumulative distribution function (i.e.~not the \emph{inverse} CDF, but just the CDF). Both are easy for a computer to calculate, where the second is sometimes more computationally convenient for intervals touching the edge. 
 
-If we label the intervals $ 0, 1, 2,\ldots, N-1 $, we can store these values in an list. For a uniform random input $ u $ in the range $ [0, 1) $, where 1 is not included, we can obtain the desired value by simply looking the index corresponding to the value. Mapping $ u $ to the index is done by multiplying by $ N $ and only keeping the integer part, and hence computes $ \lfloor u N \rfloor $, which in code can be done my something equivalent to \verb|int(u * N)|.
+If we label the intervals $ 0, 1, 2,\ldots, N-1 $, we can store these values in an list. For a uniform random input $ U $ in the range $ 0 \leq U < 1 $, where 1 is not included, we can obtain the desired value by simply looking up the index corresponding to the relative size of $ U $ compared to $ N - 1 $. Mapping $ U $ to the index is done by multiplying by $ N $ and only keeping the integer part, and hence computes $ \lfloor U N \rfloor $, which in code can be done by something equivalent to \verb|int(U * N)|.
 
 In the file \singlecodeline{approximate_gaussian_distribution.py} there is a function \singlecodeline{construct_piecewise_constant_approximation} which produces a piecewise constant approximation to the Gaussian's inverse cumulative distribution function. A condensed version is shown in \Cref{code:python:construct_piecewise_constant_approximation}.
 
@@ -281,7 +286,7 @@ from which we can see the approximation is approximately 30 times faster than th
 
 It is worth noting of course that the lookup table only needs to be computed once, and this can be done offline, so is not performance critical. 
 
-So how can a higher performance version be implemented in C? Easily. Assuming we've precomputed the values for the lookup table, then these can be stored in an array, and the piecewise constant approximation is a effectively a single line of C code. A slightly expanded version of the function \singlecodeline{piecewise_constant_approximation}
+So how can a higher performance version be implemented in C? Easily. Assuming we've precomputed the values for the lookup table, then these can be stored in an array, and the piecewise constant approximation is effectively a single line of C code. A slightly expanded version of the function \singlecodeline{piecewise_constant_approximation}
 from the file \singlecodeline{piecewise_constant_approximation.c}
 is shown in \Cref{code:c:piecewise_constant_approximation}. We can see the implementation condenses down to a single simple line of code. The reason this is so fast is because the lookup table is small enough that it will easily fit within the L2-cache. Furthermore the lookup is unconditional, and so well suited to vectorisation, and hence we explicitly mark the process as suitable for vectorisation using \verb|#pragma omp simd|.
 
@@ -328,7 +333,7 @@ Average time for the exact (GSL) function: 2.18471e-08 s.
 widening the speed increase to nearly 25 times. With vector capable hardware and some fine tuning with OpenMP, the method can be very competitive. 
 
 
-Moving this onto some \intel hardware and compiling using 
+Moving this onto some \intel Skylake AVX512 hardware and compiling using 
 \begin{verbatim}
 icc -I. -std=c11 -O3 -simd -p -mkl -qopenmp -xCORE-AVX512 \
     -march=skylake-avx512 -qopt-zmm-usage=high -c \
@@ -343,22 +348,21 @@ our simple implementation does okay, achieving
 Average time for the approximate function: 8.9733e-10 s.
 Average time for the exact (GSL) function: 2.2618e-08 s.
 \end{verbatim}
-and when this is adapted to use \verb|-DUSE_VECTOR_BATCHES| (see the make file and source code) this improves to
+and when this is adapted to use \verb|-DUSE_VECTOR_BATCHES| (see the makefile and source code for an explanation) this improves to
 \begin{verbatim}
 Average time for the approximate function: 7.5127e-10 s.
 Average time for the exact (GSL) function: 2.26445e-08 s.
 \end{verbatim}
-which corresponds to about 1.7 clock-cycles on average, in keeping with the findings from previous work. 
+which corresponds to about 1.7 clock-cycles on average (the machine runs at \SI{2.3}{\giga\hertz}), in keeping with the findings from previous work. 
 
 
 
-\clearpage
-\section{Piecewise polynomial approximations}
+\subsection{Piecewise polynomial approximations}
 
 
 There are a few natural ways to extend the piecewise constant approximation, and the two most obvious are: increase the order of the polynomial, and change the spacing of the intervals so they're denser around the edges. 
 
-Starting with increasing the order of the polynomial, the next improvement from a piecewise constant is a piecewise linear function. So the next question is which is the linear function best approximates the function in a given interval. There are various measures of the error, including the worse case error, or the average case error. For Monte Carlo applications, we used a variant called \emph{the mean squared error}, known mathematically as \emph{the $ L^2 $-error}. One of the advantages of the $ L^2 $-error, is that it is relatively easy to determine the optimal parameters. For a function $ f $, let's approximate this using a function $ \tilde{f} $, where we write it as an $ m $-th order polynomial  
+Starting with increasing the order of the polynomial, the next improvement from a piecewise constant is a piecewise linear function. So the next question is which linear function best approximates the function in a given interval. There are various measures of the error, including the worse case error, or the average case error. For Monte Carlo applications, we used a variant called \emph{the mean squared error}, known mathematically as \emph{the $ L^2 $-error} (some definitions use the \emph{root mean squared error}). One of the advantages of the $ L^2 $-error, is that it is relatively easy to determine the optimal parameters. For a function $ f $, let's approximate this using a function $ \tilde{f} $, where we write it as an $ m $-th order polynomial  
 \begin{equation}
 f(u) \approx \tilde{f}(u) = c_0 + c_1 u + c_2 u^2 + \cdots + c_m u^m. 
 \end{equation}
@@ -383,7 +387,7 @@ A_{i,j} = \dfrac{b^{i+j+1} - a^{i + j + 1}}{i + j + 1}, \\
 \bm{x}_i = c_i.
 \end{gather}
 
-The improvement we also want to make is to make the intervals denser near the edges of the function, as these are the trickiest bits requiring the most effort from an approximation. One way to achieve this is to have the intervals geometrically decaying in size near the edge, and one decay rate which is particularly well suited for computer calculations is in powers of two (as computers work in binary). When the intervals are decaying powers of two, we give these the special name of \emph{dyadic intervals}.
+The improvement we also want to make is to make the intervals denser near the edges of the function, as these are the trickiest bits which require the most effort from an approximation. One way to achieve this is to have the intervals geometrically decaying in size near the edge, and one decay rate which is particularly well suited for computer calculations is in powers of two (as computers work in binary). When the intervals are decaying powers of two, we give these the special name of \emph{dyadic intervals}.
 
 All inverse cumulative distribution functions are defined for valued between 0 and 1, and so we only need dyadic intervals in this range. If we again consider $ N $ intervals in this range, each corresponding to an index, they are as shown in \Cref{tab:dyadic_intervals_array_indices}.
 
@@ -403,10 +407,10 @@ $ [0, \tfrac{1}{2^{N-1}}) $ &        $ N-1 $
 \label{tab:dyadic_intervals_array_indices}
 \end{table}
 
-These intervals are dense as near zero, but they are not dense near 1. Is this a problem? Not really. For the Gaussian's inverse cumulative distribution function, this is rotationally symmetric about $ \tfrac{1}{2} $ such that $ \Phi^{-1}(u) \equiv -\Phi^{-1}(1-u) $, and so values near one are easily computed by the equivalent value reflected about $ \tfrac{1}{2} $. Notice that if we reflect about $ \tfrac{1}{2} $, then there will be one interval (the 0 interval), which will contain just the value at $ \tfrac{1}{2} $. While this a slight computational redundancy, ensuring this value has an interval in which it belongs ensures any approximation won't break if it is given the perfectly valid value of $ \tfrac{1}{2} $.
+These intervals are dense near zero, but they are not dense near 1. Is this a problem? Not really. For the Gaussian's inverse cumulative distribution function, this is rotationally symmetric about $ \tfrac{1}{2} $ such that $ \Phi^{-1}(U) \equiv -\Phi^{-1}(1-U) $, and so values near one are easily computed by the equivalent value reflected about $ \tfrac{1}{2} $. Notice that if we reflect about $ \tfrac{1}{2} $, then there will be one interval, the 0 index interval, which will contain just the one value $ \tfrac{1}{2} $. While this is a slight computational redundancy, ensuring this value has an interval in which it belongs ensures any approximation won't break if it is given the perfectly valid value of $ \tfrac{1}{2} $.
 
-Taking the an order-1 polynomial, corresponding to a piecewise linear function, in the file \singlecodeline{approximate_gaussian_distribution.py} the function \singlecodeline{construct_symmetric_piecewise_polynomial_approximation} provides a relatively simple demonstration of how to build and implement such a function. A small demonstration of how to use this can be found in function \singlecodeline{plot_piecewise_polynomial_approximation_of_gaussian} from \singlecodeline{approximate_gaussian_distribution_demonstrations.py}
-where the output is shown in \Cref{fig:piecewise_polynomial_approximation_of_gaussian}. If the number of intervals in increased to a modest amount (e.g.~8 or 16) then the approximation achieves a very high fidelity very quickly. 
+Taking an order~1 polynomial, corresponding to a piecewise linear function, in the file \singlecodeline{approximate_gaussian_distribution.py} the function \singlecodeline{construct_symmetric_piecewise_polynomial_approximation} provides a relatively simple demonstration of how to build and implement such a function. A small demonstration of how to use this can be found in function \singlecodeline{plot_piecewise_polynomial_approximation_of_gaussian} from \singlecodeline{approximate_gaussian_distribution_demonstrations.py}
+where the output is shown in \Cref{fig:piecewise_polynomial_approximation_of_gaussian}. If the number of intervals in increased to a modest amount (e.g.~8 or 16) then the approximation achieves a very high fidelity very quickly. In \Cref{fig:piecewise_polynomial_approximation_of_gaussian} we only use a very small number of intervals, else the approximation and the exact function would be indistinguishable.
 
 \begin{figure}[htb]
 \centering
@@ -423,7 +427,7 @@ produces
 Average time for the exact function: 8.93741e-08 s.
 Average time for the approximate function: 1.22783e-06 s.
 \end{verbatim}
-showing that our Python implementation is in approximately 15 times slower than the exact function! 
+showing that our Python implementation is approximately 15 times slower than the exact function! (It will be our C implementations which will be fast). 
 
 To get an idea of how accurate these approximations are for different numbers of intervals and varying polynomial orders, the function \singlecodeline{plot_error_of_piecewise_polynomial_approximation_of_gaussian} computes the RMSE for various configurations, with the results shown in \Cref{fig:piecewise_polynomial_approximation_of_gaussian_rmse}.
 
@@ -434,10 +438,10 @@ To get an idea of how accurate these approximations are for different numbers of
 \label{fig:piecewise_polynomial_approximation_of_gaussian_rmse}
 \end{figure}
 
-We are not particularly discouraged by this Python result, as this approximation can be extremely performance on vector hardware, assuming a sufficiently wide vector length. The reason for this is simple, let us suppose we are working in 32-bit single-precision, and we are using the reasonably high fidelity 16-interval piecewise cubic approximation. If we store the possible coefficients for a given term in a list, then this will only require 512-bits ($ 32 \times 16 = 512 $), which is the vector width on a lot of modern hardware, such as \intel's AVX512 Skylake hardware or newer. This means that when we lookup the coefficients for a given term, instead of querying the cache, we can query a vector register, where we will only need 4 vector registers to hold all the coefficients we need. Additionally, if we are using dyadic intervals, then we can easily determine the index by reading the exponent bits of the floating-point number using a bit-wise integer operations (much quicker than how we did this in Python). This all means we never even need to look in the cache, and everything we require is held in the cache, and we only need a few simple arithmetic operations (which can use FMAs) and bit manipulations. This means that a C implementation can achieve very high speeds.
+We are not particularly discouraged by this Python result, as this approximation can be extremely performant on vector hardware, assuming a sufficiently wide vector length. The reason for this is simple, let us suppose we are working in 32-bit single-precision, and we are using the reasonably high fidelity 16-interval piecewise cubic approximation. If we store the possible coefficients for a given term in a list, then this will only require 512-bits ($ 32 \times 16 = 512 $), which is the vector width on a lot of modern hardware, such as \intel's AVX512 Skylake hardware or newer. This means that when we lookup the coefficients for a given term, instead of querying the cache, we can query a vector register, where we will only need 4 vector registers to hold all the coefficients we need. Additionally, if we are using dyadic intervals, then we can easily determine the index by reading the exponent bits of the floating-point number using bit-wise operations (much quicker than how we did this in Python). This all means we never even need to look in the cache, everything we require is held in vector registers, and we only need a few simple arithmetic operations (which can even use FMAs) and bit manipulations. This means that a C implementation can achieve very high speeds.
 
 In the file \singlecodeline{piecewise_polynomial_approximation.c} we provide several implementations of a piecewise polynomial approximation using the function \singlecodeline{piecewise_polynomial_approximation}
-where there several implementations targeting different architectures. Different implementations are used depending on the value of various macro definitions passed to the compiler, and as described in \Cref{tab:piecewise_polynomial_approximation_implementations}, where to use a cubic approximation implemented using OpenMP you would compile with the flags
+where there several implementations targeting different architectures. Different implementations are compiled depending on the value of various macro definitions passed to the compiler (using ``\verb|-D|<macro-name>''), as described in \Cref{tab:piecewise_polynomial_approximation_implementations}. To use a cubic approximation implemented using OpenMP you would compile with the flags
 \singlecodeline{-DUSE_OPENMP_SIMD_APPROX -DPOLYNOMIAL_ORDER=3}
 
 \begin{table}[htb]
@@ -454,9 +458,9 @@ Macro & Target & Vectors &  \verb|POLYNOMIAL_ORDER| \\
 \label{tab:piecewise_polynomial_approximation_implementations}
 \end{table} 
 
-All of the implementations are written assuming IEEE 32-bit single precision floats, require 16 dyadic intervals, and assume vector widths of 512-bits (even for SVE). Our set of implementations is not complete nor exhaustive, and there is likely some room for more fine tuning and optimisation. Nonetheless, some can be readily copied, while we hope that others serve as useful templates for constructing other approximations. 
+All of the implementations are written assuming IEEE 32-bit single-precision floats, require 16 dyadic intervals, and assume vector widths of 512-bits (even for SVE). Our set of implementations is not complete nor exhaustive, and there is likely some room for more fine tuning and optimisation. Nonetheless, some can be readily copied, while we hope that others serve as useful templates for constructing other approximations. 
 
-Some condensed versions of these implementations (without many comments for brevity) are shown in \Cref{code:c:piecewise_polynomial_approximation_use_openmp_simd_approx,code:c:piecewise_polynomial_approximation_use_arm_sve_inline_approx_cubic,code:c:piecewise_polynomial_approximation_use_intel_intrinsics_approx_cubic}, demonstrating an OpenMP SIMD implementation, an \arm SVE implementation, and an \intel intrinsics implementation. A explanation of what is going on in each of these implementations is provided in \Cref{algo:piecewise_polynomial_approx_using_dyadic_intervals}.
+Some condensed versions of these implementations (with most of the comments removed for brevity) are shown in \Cref{code:c:piecewise_polynomial_approximation_use_openmp_simd_approx,code:c:piecewise_polynomial_approximation_use_arm_sve_inline_approx_cubic,code:c:piecewise_polynomial_approximation_use_intel_intrinsics_approx_cubic}, demonstrating an OpenMP SIMD implementation, an \arm SVE implementation, and an \intel intrinsics implementation. An explanation of what is going on in each of these implementations is provided in \Cref{algo:piecewise_polynomial_approx_using_dyadic_intervals}.
 
 \begin{algorithm}[H]
 \DontPrintSemicolon
@@ -545,7 +549,7 @@ void piecewise_polynomial_approximation(
 
 \begin{lstfloat}[H]
 \begin{lstlisting}[style=C, captionpos=b, caption={Piecewise polynomial approximation implementations using \arm SVE inline assembly.}, label={code:c:piecewise_polynomial_approximation_use_arm_sve_inline_approx_cubic}]
-// This is not VLA, but assumes vector lengths sufficient to hold the arrays
+// This is not VLA, but assumes vector lengths sufficient to hold the arrays.
 #ifdef USE_ARM_SVE_INLINE_APPROX_CUBIC
 void piecewise_polynomial_approximation(unsigned int n_samples, 
     const float32 *restrict input, float32 *restrict output)
@@ -666,7 +670,7 @@ void piecewise_polynomial_approximation(unsigned int n_samples,
 \end{lstfloat}
 \clearpage
 
-On my scalar machine, compiling the \openmp SIMD version using \singlecodeline{make_time_piecewise_polynomial_approximations.sh} 
+On my personal scalar machine, compiling the \openmp SIMD version using \singlecodeline{make_time_piecewise_polynomial_approximations.sh} 
 which for a piecewise cubic approximation looks like
 \begin{verbatim}
 gcc -I. -fopenmp -Ofast -DUSE_OPENMP_SIMD_APPROX -DPOLYNOMIAL_ORDER=3 \
@@ -681,7 +685,7 @@ Average time for the exact (GSL) function: 2.2597e-08 s.
 \end{verbatim}
 GSL is as expected, and the SIMD cubic is slightly slower than the piecewise constant. Given the scalar hardware, this is not too surprising. 
 
-Moving onto an \intel machine\footnote{\verb|lscpu| gives \verb|Intel(R) Xeon(R) Gold 6140 CPU @ 2.30GHz|.} we can inspect the performance of the C implementations using AVX512 intrinsics. Building either a cubic or polynomial approximation using
+Moving onto an \intel machine\footnote{\verb|lscpu| gives \verb|Intel(R) Xeon(R) Gold 6140 CPU @ 2.30GHz|.} we can inspect the performance of the C implementations using AVX512 intrinsics. Building a cubic approximation using
 \begin{verbatim}
 icc -I.  -DUSE_INTEL_INTRINSICS_APPROX_CUBIC -DPOLYNOMIAL_ORDER=3 \
     -std=c11 -O3 -simd -p -mkl -qopenmp -xCORE-AVX512 \
@@ -707,8 +711,8 @@ Average time for the exact (GSL) function: 2.6856e-08 s.
 \end{verbatim}
 We can see that at a frequency of \SI{2.3}{\giga\hertz} these correspond to average times of 0.9 and 0.6 clock-cycles per input, which is in keeping with our previous research, and is very fast. 
 
-These C implementations are designed to be fast and high performance. Nonetheless, we are sure with some more profiling, trying some other compiler flags, and perhaps a bit more effort they may yet yield a bit more performance. It is worth nothing that our approximations are much faster than the exact functions from \intel's MKL, which using the flag \singlecodeline{-DCOMPARE_AGAINST_MKL} when compiling \singlecodeline{time_piecewise_polynomial_approximation.c}
-gives the results
+These C implementations are designed to be fast and high performance. Nonetheless, we are sure with some more profiling, trying some other compiler flags, and perhaps a bit more effort they may yet yield a bit more performance. It is worth noting that our approximations are much faster than the exact functions from \intel's MKL, which can be included in our comparisons using the flag \singlecodeline{-DCOMPARE_AGAINST_MKL} when compiling \singlecodeline{time_piecewise_polynomial_approximation.c}
+and gives the results
 \begin{verbatim}
 Average time for the approximate function: 2.13887e-10 s.
 Average time for the exact (GSL) function: 2.40896e-08 s.
@@ -723,12 +727,13 @@ amongst several others.
 \clearpage
 \section{The non-central $ \chi^2 $-distribution}
 
-The non-central $ \chi^2 $-distribution $ \chi^2_\nu(\lambda) $ with $ \nu $ degrees of freedom and non-centrality parameter $ \lambda $ is another common distribution, where $ \nu > 0 $ and $ \lambda \geq 0 $. One application of note where this occurs is the Cox-Ingersoll-Ross (CIR) model for interest rates. The inverse cumulative distribution function for this distribution, which we call $ C^{-1}_{\nu}(\cdot;\lambda) $ is very expensive to calculate, where the results from a relative comparison to the Gaussian are shown in \Cref{tab:non_central_chi_2_times}. Although there are two parameters, $ \nu $ and $ \lambda $, for a simulation with a constant time increment, $ \nu $ is a constant, and so $ C^{-1}_{\nu}(\cdot;\lambda) $ can be regarded as only being parametrised by $ \lambda $. Thus we need to build a parametrised approximation. 
+The non-central $ \chi^2 $-distribution $ \chi^2_\nu(\lambda) $ with $ \nu $ degrees of freedom and non-centrality parameter $ \lambda $ is another common distribution, where $ \nu > 0 $ and $ \lambda \geq 0 $. One application of note where this occurs is the Cox-Ingersoll-Ross (CIR) model for interest rates. The inverse cumulative distribution function for this distribution, which we call $ C^{-1}_{\nu}(\cdot;\lambda) $ is very expensive to calculate, where the results from a relative comparison to the Gaussian are shown in \Cref{tab:non_central_chi_2_times}. Although there are two parameters, $ \nu $ and $ \lambda $, for a simulation with a constant time increment $ \nu $ is a constant, and so $ C^{-1}_{\nu}(\cdot;\lambda) $ can be regarded as only being parametrised by $ \lambda $. Thus we need to build a parametrised approximation. 
 
 \begin{table}[htb]
     \centering
+    \hfill
     \noindent
-    \begin{subtable}[t]{0.35\linewidth}
+    \begin{subtable}[t]{0.4\linewidth}
     \centering    
     \begin{tabular}{|r|rrrrr|}
     \multicolumn{1}{c}{\multirow{2}{*}{$ \lambda $}} & \multicolumn{5}{c}{$ \nu $} \\
@@ -751,7 +756,7 @@ The non-central $ \chi^2 $-distribution $ \chi^2_\nu(\lambda) $ with $ \nu $ deg
 \end{minipage}
 \end{subtable}
 \hfill
-\begin{subtable}[t]{0.5\linewidth}   
+\begin{subtable}[t]{0.55\linewidth}   
     \centering     
     \begin{tabular}{|r|rrrrr|}
     \multicolumn{1}{c}{\multirow{2}{*}{$ \lambda $}} & \multicolumn{5}{c}{$ \nu $} \\
@@ -773,8 +778,7 @@ The non-central $ \chi^2 $-distribution $ \chi^2_\nu(\lambda) $ with $ \nu $ deg
     \label{tab:non_central_chi_2_times_matlab}
 \end{minipage}
 \end{subtable}
-
-
+\hfill
 \caption[Computational times for inverse non-central $ \chi^2 $ cumulative distribution]{The ratio of average computational times for evaluating the inverse non-central $ \chi^2 $ cumulative distribution function against the inverse Gaussian cumulative distribution function for several values of the non-centrality parameter $ \lambda $ and degrees of freedom $ \nu $.}
 \label{tab:non_central_chi_2_times}
 \end{table}
@@ -828,11 +832,11 @@ where $ C^{-1}_\nu $, without the parameter $ \lambda $, is the inverse cumulati
 \label{fig:cir_update_factor_convergence_to_gaussian_both_limits}
 \end{figure}
 
-We notice that $ P_x(\cdot;y) $ is not symmetric, but given it looks so similar to the Gaussian, we approximate it similarly. We again use a piecewise polynomial approximation using dyadic intervals. However, as it is not rotationally symmetric, we use one approximation in between 0 and $ \tfrac{1}{2} $, and a second between $ \tfrac{1}{2} $ and 1. 
+We notice that $ P_x(\cdot;y) $ is not symmetric, but given it looks so similar to the Gaussian, we approximate it similarly. We again use a piecewise polynomial approximation using dyadic intervals. However, as it is not rotationally symmetric, we use one approximation between 0 and $ \tfrac{1}{2} $, and a second between $ \tfrac{1}{2} $ and 1. 
 
-As we have a parametrised distribution for $ 0 < y < 1 $, we construct several approximations for a discrete set of different and equally spaced values of $ \sqrt{y} $, where the value for a specific value of $ y $ is obtained from linear interpolation in the value of $ \sqrt{y} $. 
+As we have a parametrised distribution for $ 0 < y < 1 $, we construct several approximations for a discrete set of different and equally spaced values of $ \sqrt{y} $, where the value for some specific $ y $ is obtained from linear interpolation in the value of $ \sqrt{y} $. 
 
-An polynomial approximation to the non-central $ \chi^2 $-distributions inverse cumulative distribution function, produced in the way we've highlighted, is implemented in \singlecodeline{approximate_non_central_chi_squared.py}
+A polynomial approximation to the non-central $ \chi^2 $-distribution's inverse cumulative distribution function, produced in the way we've highlighted, is implemented in \singlecodeline{approximate_non_central_chi_squared.py}
 and its use is demonstrated in the file \singlecodeline{approximate_non_central_chi_squared_demonstrations.py} with the function \singlecodeline{plot_non_central_chi_squared_polynomial_approximation}
 which produces the approximations shown in \Cref{fig:piecewise_polynomial_approximation_of_non_central_chi_squared}.
 
@@ -889,15 +893,15 @@ We mentioned in \Cref{sec:when_would_i_use_approximate_random_variables} that ra
 \shortintertext{and is often written as}
 \dd{x} & = a(t, x) \dd{t}. \label{eqt:first_order_ode}
 \end{align}
-Examples of problems taking the form of \Cref{eqt:first_order_ode} can be found in models for population growth, thermal cooling, circuit theory, and projectile motion. How these systems evolve is not at all random, but completely deterministic. 
+Examples of problems taking the form of \Cref{eqt:first_order_ode} can be found in models for: population growth, thermal cooling, circuit theory, and projectile motion. How these systems evolve is not at all random, but completely deterministic. 
 
-Naturally though, there are systems which are subject to random effects which influence how they evolve. Examples of systems experiencing random influences can be found in model from finance, dilute chemistry, and various branches of physics. If a system behaves randomly we say it is \emph{stochastic}, and these can regularly be described by using what's called a \emph{stochastic differential equation} of the form
+Naturally though, there are systems which are subject to random effects which influence how they evolve. Examples of systems experiencing random influences can be found in models from finance, dilute chemistry, and various branches of physics. If a system behaves randomly we say it is \emph{stochastic}, and these can regularly be described by using what's called a \emph{stochastic differential equation} of the form
 \begin{equation}
 \dd{X_t}  = a(t, X_t) \dd{t} + b(t, X_t) \dd{W_t}. \label{eqt:sde}
 \end{equation}
 The new term $ \dd{W_t} $ is the underlying stochastic process, where $ W_t $ is called a \emph{Brownian motion}. The most important thing about a Brownian motion is that between two times $ s $ and $ t $, with $ s < t $, the change $ W_t - W_s $ is a zero mean Gaussian random variable with variance $ t - s $. This means that over a time interval $ \Delta t $, the change in the  Brownian motion $ \Delta W_t $ can be expressed using a standard Gaussian random variable $ Z $ by $ \Delta W_t = \sqrt{\Delta t} Z $.
 
-When simulating a path described by \Cref{eqt:sde}, it is important not to forgetting that no two simulations of \Cref{eqt:sde} will be the same, as each path is subjected to unique random influences. 
+When simulating a path described by \Cref{eqt:sde}, it is important not to forgetting that no two simulations of \Cref{eqt:sde} will be the same, as each path is subjected to unique random influences, as was demonstrated in \Cref{fig:example_simulation}. 
 
 A popular and robust way to simulate processes described by \Cref{eqt:sde} up to  time $ T $ is to use \emph{the Euler-Maruyama scheme}, which makes the approximation
 \begin{equation}
@@ -907,13 +911,13 @@ which gives rise to the Euler-Maruyama scheme
 \begin{equation}
 \hat{X}_{n+1} = \hat{X}_n +  a(t_n, \hat{X}_n) \delta + b(t_n, \hat{X}_n) \sqrt{\delta} Z_n, \label{eqt:euler_maruyama_scheme}
 \end{equation}
-where we simulate from $ \hat{X}_0 \to \hat{X}_1 \to \hat{X}_2 \to \cdots \to \hat{X}_n \to \cdots \to \hat{X}_N $, using $ N $ equally spaced time increments $ t_n = n \delta $ where $ \delta = \tfrac{T}{N}$. 
+where we simulate from $ \hat{X}_0 \to \hat{X}_1 \to \hat{X}_2 \to \cdots \to \hat{X}_n \to \cdots \to \hat{X}_N $, using $ N $ equally spaced time increments $ \delta = \tfrac{T}{N}$ where $ t_n = n \delta $. 
 
 To estimate exactly where the final position $ X_T $ is expected to be, the Monte Carlo scheme uses $ M $ simulations to approximate
 \begin{equation}
 \conExp{X_T} \approx \conExp{\hat{X}_N} \approx \dfrac{1}{M} \sum^M \hat{X}_N.
 \end{equation}
-Performing all these $ M $ simulations, each requiring $ N $ random numbers, the amount of random numbers used can quickly become enormous, and generating them becomes the computational bottleneck. This is where our approximate random variables come in. Instead of the random variables $ Z_n $, which exactly follow the Gaussian distribution, we propose using approximate random variables $ \tilde{Z}_n $ and the modified version of the Euler-Maruyama scheme
+Performing all these $ M $ simulations, each requiring $ N $ random numbers, the amount of random numbers used can quickly become enormous, and generating them becomes the computational bottleneck. This is where our approximate random variables come into play. Instead of the random variables $ Z_n $, which exactly follow the Gaussian distribution, we propose using approximate random variables $ \tilde{Z}_n $ and the modified version of the Euler-Maruyama scheme
 \begin{equation}
 \tilde{X}_{n+1} = \tilde{X}_n +  a(t_n, \tilde{X}_n) \delta + b(t_n, \tilde{X}_n) \sqrt{\delta} \tilde{Z}_n. \label{eqt:euler_maruyama_scheme_approximate_random_variables}
 \end{equation}
@@ -924,9 +928,9 @@ Switching to the modified Euler-Maruyama scheme will give a considerable speed i
 \end{equation}
 
 
-If we inspect the portion marked regular Monte Carlo, everything is as one might expect, and we would estimate ($ \approx $) the exact quantity using the finest resolution possible. The interesting bit is the equality we've marked as the multilevel Monte Carlo. The fact that this is an equality means that the same accuracy as the regular Monte Carlo is achieved, and no accuracy is lost. So why change to the multilevel scheme? The multilevel scheme's first expectation $ \mathbb{E}(X_{\mathrm{coarse}}) $ is our new primary estimation tool, which we can see is made from coarse simulations, and so is computationally  cheaper, giving a speed improvement. The second expectation $ \mathbb{E}(X_{\mathrm{fine}} - X_{\mathrm{coarse}}) $ is the correction needed to adjust from a coarse simulation to a fine simulation, and is how the fine simulation's accuracy is maintained. This second expectation only requires a negligible number of simulations, and hence doesn't affect the overall cost. This is why the multilevel scheme has all the speed of a coarse simulation and the accuracy of a fine simulation. Using this multilevel Monte Carlo, the higher fidelity simulations are produced from the Euler-Maruyama scheme using the exact random numbers, and faster but lower fidelity simulations are produced using the approximate random numbers. We gain speed without losing accuracy.
+If we inspect the portion marked regular Monte Carlo, everything is as one might expect, and we would estimate the exact quantity using the finest resolution possible. The interesting bit is the equality we've marked as the multilevel Monte Carlo. The fact that this is an equality means that the same accuracy as the regular Monte Carlo is achieved, and no accuracy is lost. So why change to the multilevel scheme? The multilevel scheme's first expectation $ \mathbb{E}(X_{\mathrm{coarse}}) $ is our new primary estimation tool, which we can see is made from coarse simulations, and so is computationally  cheaper, giving a speed improvement. The second expectation $ \mathbb{E}(X_{\mathrm{fine}} - X_{\mathrm{coarse}}) $ is the correction needed to adjust from a coarse simulation to a fine simulation, and is how the fine simulation's accuracy is maintained. This second expectation only requires a negligible number of simulations, and hence doesn't affect the overall cost. This is why the multilevel scheme has all the speed of a coarse simulation and the accuracy of a fine simulation. Using this multilevel Monte Carlo, the higher fidelity simulations are produced from the Euler-Maruyama scheme using the exact random numbers, and faster but lower fidelity simulations are produced using the approximate random numbers. We gain speed without losing accuracy.
 
-Usually the fine and coarse simulations differ by using smaller and larger time increments. Our approximate random variables present another way to boost speed without losing performance. Unfortunately, incorporating approximate random variables into a pre-existing regular Monte Carlo or multilevel Monte Carlo is not without some technical difficulties. Approximate random variables cannot be used for all simulations, there are limitations, and these are too mathematically technical to repeat here. For anyone looking to implement a  Monte Carlo scheme using them, we recommend reading some of the more advances material mentioned in \Cref{sec:where_can_i_learn_more}.
+Usually the fine and coarse simulations differ by using smaller and larger time increments. Our approximate random variables present a separate way to boost speed without losing performance. Unfortunately, incorporating approximate random variables into a pre-existing regular Monte Carlo or multilevel Monte Carlo is not without some technical difficulties. Approximate random variables cannot be used for all simulations, there are limitations, and these are too mathematically technical to repeat here. For anyone looking to implement a  Monte Carlo scheme using them, we recommend reading some of the more advanced material mentioned in \Cref{sec:where_can_i_learn_more}.
 
 
 

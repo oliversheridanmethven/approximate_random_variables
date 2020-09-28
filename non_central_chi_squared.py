@@ -8,7 +8,6 @@ Description:
     Comparison of the non-central chi-squared to the Gaussian.
 """
 
-import matplotlib as mpl
 import pandas as pd
 from scipy.stats import uniform, ncx2, norm
 from timeit import default_timer as timer

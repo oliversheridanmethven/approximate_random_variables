@@ -10,7 +10,7 @@ Description:
 
 import matplotlib as mpl
 import matplotlib.pylab as plt
-from matplotlib.pylab import plot, legend, savefig, xscale, yscale, ylabel, xlabel
+from matplotlib.pylab import plot, savefig
 from matplotlib.pylab import clf as clear_plot
 from numpy import linspace
 import pandas as pd
@@ -59,3 +59,10 @@ def non_central_chi_squared_polynomial_approximation_timing():
     df.index = df.index.rename('lambda')
     df.columns = df.columns.rename('nu')
     print df
+
+
+if __name__ == '__main__':
+    print("Plotting a polynomial approximation to the non-central chi-squared distribution.")
+    plot_non_central_chi_squared_polynomial_approximation()
+    print("Cost of the exact function compared to the approximation.")
+    non_central_chi_squared_polynomial_approximation_timing()

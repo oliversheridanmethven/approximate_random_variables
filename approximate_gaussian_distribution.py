@@ -11,7 +11,7 @@ Description:
     variables by the inverse transform method.
 """
 import numpy as np
-from numpy import nan, array, zeros
+from numpy import array, zeros
 from numpy.linalg import solve
 from scipy.integrate import quad
 from progressbar import progressbar
@@ -31,6 +31,7 @@ def expected_value_in_interval(func, a, b, *args, **kwargs):
     :return: Float.
     """
     return integrate(func, a, b, *args, **kwargs) / (b - a)
+
 
 ##### Piecewise constant approximations #####
 
@@ -68,6 +69,7 @@ def construct_piecewise_constant_approximation(func, n_intervals):
         return lookup_table[array(n_intervals * u).astype(int)]
 
     return piecewise_constant_approximation
+
 
 ##### Piecewise polynomial approximations #####
 
@@ -133,6 +135,7 @@ def construct_index_of_dyadic_interval(n_intervals):
         return array([(k for k, v in enumerate(intervals_lower_values) if i >= v).next() for i in u])
 
     return index_of_dyadic_interval
+
 
 def construct_symmetric_piecewise_polynomial_approximation(func, n_intervals, polynomial_order):
     """
