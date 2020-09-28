@@ -8,7 +8,7 @@ Oliver Sheridan-Methven, September 2020.
 
 ## Description
 
-This is a small collection of code snippets, designed to demonstrate the 
+This is a small collection of code snippets, designed to demonstrate
 *approximate random variables*. For a more comprehensive
 discussion of what's contained within and how to run the examples, 
 see the file:
