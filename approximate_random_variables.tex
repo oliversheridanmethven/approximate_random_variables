@@ -1,4 +1,4 @@
-\documentclass[11pt,a4paper,oneside,english]{extarticle}
+\documentclass[11pt,a4paper,twoside,english]{extarticle}
 \input{preamble}
 
 \newcommand{\singlecodeline}[1]{\\[1em]\centerline{\lstinline[basicstyle=\ttfamily]$#1$}\\[1em]}
@@ -14,6 +14,7 @@
 
 \begin{document}
 \linenumbers
+\pagestyle{empty}
 \maketitle
 \pagenumbering{arabic}
 
@@ -28,8 +29,11 @@ We introduce the idea of \emph{approximate random variables} and discuss when th
 
 \clearpage
 \tableofcontents
-\clearpage
+\cleardoublepage
+\pagenumbering{arabic}
+\pagestyle{fancy}
 
+\clearpage
 \section{Introduction}
 
 This report is intended to be a relatively light introduction to approximate random variables, designed primarily for an industry practitioner, but also applicable to scientists who want to achieve better code performance. In this introduction, we will give a gentle introduction to random numbers and approximate random variables, and discuss one of their major areas of application. We will give a light discussion of what's going on from a mathematical perspective, and provide code demonstrating how to implement these ideas. Most of the code be written using Python in an easy to follow manner (not particularly focused on performance), and where appropriate we will also provide some high performance code written in C. We encourage readers to use either the code provided as is, or adapt it to their own needs as appropriate. The code largely demonstrative, so we make no guarantees about its performance or correctness. 
@@ -117,6 +121,7 @@ To remedy the difficult edge cases, our research proposes introducing an approxi
 In our experiments, we pitted various exact implementations (some proprietary), against our approximations. Although inexact, our approximations produced random variables in a fraction of the time it takes the exact functions. The random variables produced don't exactly follow the desired distribution, but instead something very similar. When the random variables are produced  using an approximation, we call them \emph{approximate random variables}. In our research, we study the error introduced from using these instead of the exact ones. Not only can we quantify how they affect the answer, we developed a mathematical approach to counteract their error. This means we can reap the benefits of the faster speed, without losing any accuracy, getting the best of both worlds. 
 
 \subsection{When would I use approximate random variables?}
+\label{sec:when_would_i_use_approximate_random_variables}
 
 In our research we investigated and analysed the consequences of using approximate random variables in the context of running computer simulations. This is extremely common in finance, and also used in weather forecasting. As we mentioned, various other applications use random numbers and could likely benefit from using approximate random numbers, although there remains work to be done to investigate and analyse all of the remaining use-cases.
 
@@ -154,9 +159,9 @@ The demonstrations we provide will mostly be written in Python, and a few higher
 \item The \arm \texttt{armclang} compiler.
 \item The \nvidia \texttt{nvcc} compiler.
 \end{itemize} 
-Similarly, we will assume access to appropriate hardware from either \intel, \arm, or \nvidia where appropriate. We assume when compiling that the user has also set up the default paths to find the header files and libraries by appropriately setting the environment variables \verb|LD_LIBRARY_PATH| and \verb|C_INCLUDE_PATH|.
+Similarly, we will assume access to appropriate hardware from either \intel, \arm, or \nvidia where appropriate. We assume when compiling that the user has also set up the default paths to find the header files and libraries by appropriately setting the environment variables \verb|LIBRARY_PATH, |\verb|LD_LIBRARY_PATH|, and \verb|C_INCLUDE_PATH|.
 
-We will try an keep the python packages used to a minimum, although some of the notable packages which are used within our code include: \texttt{numpy}, \texttt{pandas}, \texttt{scipy}, \texttt{mpmath}, \texttt{matplotlib}, etc. 
+We will try an keep the Python packages used to a minimum, although some of the notable packages which are used within our code include: \texttt{numpy}, \texttt{pandas}, \texttt{scipy}, \texttt{mpmath}, \texttt{matplotlib}, etc. 
 
 Some notable files include
 \begin{lstfloat}[htb]
@@ -197,7 +202,7 @@ approximate_random_variables/
 \todo[inline=true]{Update this.}
 \end{lstfloat}
 
-
+\clearpage
 \section{Piecewise constant approximations}
 
 We mentioned earlier in \Cref{sec:what_are_approximate_random_variables} an approximation to the Gaussian's inverse cumulative distribution function which was comprised of a series of flat lines of equal width. The mathematical name for this approximation is a \emph{piecewise constant function} which uses \emph{equipartitioned intervals}, although we will just abbreviate this as the piecewise constant function. To construct the approximation, we first have to decide, how many intervals do we need, and what value should be use as the constant for each interval. 
@@ -323,6 +328,31 @@ Average time for the exact (GSL) function: 2.18471e-08 s.
 widening the speed increase to nearly 25 times. With vector capable hardware and some fine tuning with OpenMP, the method can be very competitive. 
 
 
+Moving this onto some \intel hardware and compiling using 
+\begin{verbatim}
+icc -I. -std=c11 -O3 -simd -p -mkl -qopenmp -xCORE-AVX512 \
+    -march=skylake-avx512 -qopt-zmm-usage=high -c \
+    piecewise_constant_approximation.c 
+icc -I. -mkl -O0 -c time_piecewise_constant_approximation.c \
+    -D__PURE_INTEL_C99_HEADERS__
+icc -I. -o time_piecewise_constant_approximation [object_files] \
+    -lgsl -lgslcblas
+\end{verbatim}
+our simple implementation does okay, achieving
+\begin{verbatim}
+Average time for the approximate function: 8.9733e-10 s.
+Average time for the exact (GSL) function: 2.2618e-08 s.
+\end{verbatim}
+and when this is adapted to use \verb|-DUSE_VECTOR_BATCHES| (see the make file and source code) this improves to
+\begin{verbatim}
+Average time for the approximate function: 7.5127e-10 s.
+Average time for the exact (GSL) function: 2.26445e-08 s.
+\end{verbatim}
+which corresponds to about 1.7 clock-cycles on average, in keeping with the findings from previous work. 
+
+
+
+\clearpage
 \section{Piecewise polynomial approximations}
 
 
@@ -426,9 +456,28 @@ Macro & Target & Vectors &  \verb|POLYNOMIAL_ORDER| \\
 
 All of the implementations are written assuming IEEE 32-bit single precision floats, require 16 dyadic intervals, and assume vector widths of 512-bits (even for SVE). Our set of implementations is not complete nor exhaustive, and there is likely some room for more fine tuning and optimisation. Nonetheless, some can be readily copied, while we hope that others serve as useful templates for constructing other approximations. 
 
-Some condensed versions of these implementations (without many comments for brevity) are shown in \Cref{code:c:piecewise_polynomial_approximation_use_openmp_simd_approx,code:c:piecewise_polynomial_approximation_use_arm_sve_inline_approx_cubic,code:c:piecewise_polynomial_approximation_use_intel_intrinsics_approx_cubic}, demonstrating an OpenMP SIMD implementation, an \arm SVE implementation, and an \intel intrinsics implementation. 
+Some condensed versions of these implementations (without many comments for brevity) are shown in \Cref{code:c:piecewise_polynomial_approximation_use_openmp_simd_approx,code:c:piecewise_polynomial_approximation_use_arm_sve_inline_approx_cubic,code:c:piecewise_polynomial_approximation_use_intel_intrinsics_approx_cubic}, demonstrating an OpenMP SIMD implementation, an \arm SVE implementation, and an \intel intrinsics implementation. A explanation of what is going on in each of these implementations is provided in \Cref{algo:piecewise_polynomial_approx_using_dyadic_intervals}.
 
-\begin{lstfloat}[h!tb]
+\begin{algorithm}[H]
+\DontPrintSemicolon
+\KwIn{Floating-point uniform random number $ U \in [0, 1) $.}
+\KwOut{Floating-point piecewise polynomial approximation.}
+Form predicate based on whether $ U > \tfrac{1}{2} $.\;
+Reflect about $ \tfrac{1}{2} $ to obtain $ U \in [0, \tfrac{1}{2}] $.\;
+Alias $ U $ as an unsigned integer.\;
+Read the exponent bits using bitwise-AND.\;
+Right shift away the mantissa's bits.\;
+Obtain an array index by correcting for exponent bias.\;
+Cap the array index to avoid overflow.\;
+Read the polynomial coefficients using the array index.\;
+Re-interpret $ U $ as a float.\;
+Form the polynomial approximation.\;
+Correct sign of approximation based on predicate.\;
+\caption[Piecewise polynomial approximation using dyadic intervals]{Piecewise polynomial approximation using dyadic intervals.}
+\label{algo:piecewise_polynomial_approx_using_dyadic_intervals}
+\end{algorithm}
+
+\begin{lstfloat}[H]
 \begin{lstlisting}[style=C, captionpos=b, caption={Piecewise polynomial approximation implementations using OpenMP.}, label={code:c:piecewise_polynomial_approximation_use_openmp_simd_approx}]
 #include "piecewise_polynomial_approximation.h"
 #include "piecewise_polynomial_approximation_coefficients.h"
@@ -494,7 +543,7 @@ void piecewise_polynomial_approximation(
 \end{lstlisting}
 \end{lstfloat}
 
-\begin{lstfloat}[h!tb]
+\begin{lstfloat}[H]
 \begin{lstlisting}[style=C, captionpos=b, caption={Piecewise polynomial approximation implementations using \arm SVE inline assembly.}, label={code:c:piecewise_polynomial_approximation_use_arm_sve_inline_approx_cubic}]
 // This is not VLA, but assumes vector lengths sufficient to hold the arrays
 #ifdef USE_ARM_SVE_INLINE_APPROX_CUBIC
@@ -553,7 +602,7 @@ void piecewise_polynomial_approximation(unsigned int n_samples,
 \end{lstlisting}
 \end{lstfloat}
 
-\begin{lstfloat}[h!tb]
+\begin{lstfloat}[H]
 \begin{lstlisting}[style=C, captionpos=b, caption={Piecewise polynomial approximation implementations using \intel intrinsics.}, label={code:c:piecewise_polynomial_approximation_use_intel_intrinsics_approx_cubic}]
 // Using AVX512 intrinsics. 
 #ifdef USE_INTEL_INTRINSICS_APPROX_CUBIC
@@ -615,11 +664,271 @@ void piecewise_polynomial_approximation(unsigned int n_samples,
 #endif
 \end{lstlisting}
 \end{lstfloat}
+\clearpage
 
+On my scalar machine, compiling the \openmp SIMD version using \singlecodeline{make_time_piecewise_polynomial_approximations.sh} 
+which for a piecewise cubic approximation looks like
+\begin{verbatim}
+gcc -I. -fopenmp -Ofast -DUSE_OPENMP_SIMD_APPROX -DPOLYNOMIAL_ORDER=3 \
+    -c piecewise_polynomial_approximation.c
+gcc -I. -O0 -c time_piecewise_polynomial_approximation.c
+gcc -I. -o time_piecewise_polynomial_approximation [object_files] -lgsl
+\end{verbatim}
+I obtain
+\begin{verbatim}
+Average time for the approximate function: 5.5168e-09 s.
+Average time for the exact (GSL) function: 2.2597e-08 s.
+\end{verbatim}
+GSL is as expected, and the SIMD cubic is slightly slower than the piecewise constant. Given the scalar hardware, this is not too surprising. 
 
+Moving onto an \intel machine\footnote{\verb|lscpu| gives \verb|Intel(R) Xeon(R) Gold 6140 CPU @ 2.30GHz|.} we can inspect the performance of the C implementations using AVX512 intrinsics. Building either a cubic or polynomial approximation using
+\begin{verbatim}
+icc -I.  -DUSE_INTEL_INTRINSICS_APPROX_CUBIC -DPOLYNOMIAL_ORDER=3 \
+    -std=c11 -O3 -simd -p -mkl -qopenmp -xCORE-AVX512 \
+    -march=skylake-avx512 -qopt-zmm-usage=high -c \
+    piecewise_polynomial_approximation.c 
+icc -I. -mkl -O0 -c time_piecewise_polynomial_approximation.c \
+    -D__PURE_INTEL_C99_HEADERS__
+icc -I. -o time_piecewise_polynomial_approximation \
+    [object_files] -lgsl -lgslcblas
+\end{verbatim}
+we obtain the executable
+\singlecodeline{time_piecewise_polynomial_approximation} 
+where for the piecewise linear function we instead use the flags \singlecodeline{ -DUSE_INTEL_INTRINSICS_APPROX_LINEAR -DPOLYNOMIAL_ORDER=1}
+the cubic obtains
+\begin{verbatim}
+Average time for the approximate function: 3.93652e-10 s.
+Average time for the exact (GSL) function: 2.70001e-08 s.
+\end{verbatim}
+and the linear obtains
+\begin{verbatim}
+Average time for the approximate function: 2.49551e-10 s.
+Average time for the exact (GSL) function: 2.6856e-08 s.
+\end{verbatim}
+We can see that at a frequency of \SI{2.3}{\giga\hertz} these correspond to average times of 0.9 and 0.6 clock-cycles per input, which is in keeping with our previous research, and is very fast. 
 
+These C implementations are designed to be fast and high performance. Nonetheless, we are sure with some more profiling, trying some other compiler flags, and perhaps a bit more effort they may yet yield a bit more performance. It is worth nothing that our approximations are much faster than the exact functions from \intel's MKL, which using the flag \singlecodeline{-DCOMPARE_AGAINST_MKL} when compiling \singlecodeline{time_piecewise_polynomial_approximation.c}
+gives the results
+\begin{verbatim}
+Average time for the approximate function: 2.13887e-10 s.
+Average time for the exact (GSL) function: 2.40896e-08 s.
+Average time for the exact (Intel HA) function: 2.93076e-09 s.
+Average time for the exact (Intel LA) function: 2.16174e-09 s.
+\end{verbatim}
+where not only is our approximation averaging around 0.5 clock-cycles, it is around 10 times faster than \intel. 
+
+At the time of writing, SVE capable hardware is in the preliminary stages of release, and we don't currently have access to a machine. However, to enable SVE compilation we recommend exploring the follow flags for \verb|armclang|: \singlecodeline{-armpl -fsimdmath -fvectorize -march=armv8.4-a+sve -mcpu=thunderx2t99}
+amongst several others. 
+
+\clearpage
 \section{The non-central $ \chi^2 $-distribution}
 
-\section{Comparing against exact library implementations}
+The non-central $ \chi^2 $-distribution $ \chi^2_\nu(\lambda) $ with $ \nu $ degrees of freedom and non-centrality parameter $ \lambda $ is another common distribution, where $ \nu > 0 $ and $ \lambda \geq 0 $. One application of note where this occurs is the Cox-Ingersoll-Ross (CIR) model for interest rates. The inverse cumulative distribution function for this distribution, which we call $ C^{-1}_{\nu}(\cdot;\lambda) $ is very expensive to calculate, where the results from a relative comparison to the Gaussian are shown in \Cref{tab:non_central_chi_2_times}. Although there are two parameters, $ \nu $ and $ \lambda $, for a simulation with a constant time increment, $ \nu $ is a constant, and so $ C^{-1}_{\nu}(\cdot;\lambda) $ can be regarded as only being parametrised by $ \lambda $. Thus we need to build a parametrised approximation. 
+
+\begin{table}[htb]
+    \centering
+    \noindent
+    \begin{subtable}[t]{0.35\linewidth}
+    \centering    
+    \begin{tabular}{|r|rrrrr|}
+    \multicolumn{1}{c}{\multirow{2}{*}{$ \lambda $}} & \multicolumn{5}{c}{$ \nu $} \\
+    \cline{2-6}
+    \multicolumn{1}{c|}{} & 1 &   5  &  10 &  50  & 100 \\
+    \hline
+    1    &  37 &  36 &  40 &  54 &  73\\
+    5    &  40 &  46 &  48 &  62 &  85\\
+    10   &  54 &  56 &  63 &  69 &  97\\
+    50   & 101 & 103 & 103 & 144 & 143\\
+    100  & 191 & 190 & 192 & 189 & 185\\
+    200  & 243 & 246 & 240 & 233 & 221\\
+    500  & 465 & 474 & 465 & 446 & 416\\
+    1000 & 459 & 458 & 455 & 471 & 474 \\
+    \hline
+\end{tabular}\\[1em]
+\begin{minipage}[t]{0.9\linewidth}
+\caption{Using Python and \texttt{ncx2.ppf} from Scipy's \texttt{scipy.stats}.}
+\label{tab:non_central_chi_2_times_python}
+\end{minipage}
+\end{subtable}
+\hfill
+\begin{subtable}[t]{0.5\linewidth}   
+    \centering     
+    \begin{tabular}{|r|rrrrr|}
+    \multicolumn{1}{c}{\multirow{2}{*}{$ \lambda $}} & \multicolumn{5}{c}{$ \nu $} \\
+    \cline{2-6}
+    \multicolumn{1}{c|}{} & 1 &   5  &  10 &  50  & 100 \\
+    \hline
+    1& 168 & 214 & 259 & 456 & 294  \\ 
+    5& 651 & 782 & 840 & 1510 & 2046  \\ 
+    10& 935 & 1086 & 1050 & 1838 & 2496  \\ 
+    50& 3000 & 2969 & 2562 & 4118 & 5333  \\ 
+    100& 4929 & 3461 & 5039 & 6046 & 6299  \\ 
+    200& 9456 & 9603 & 10129 & 11524 & 12766  \\ 
+    500& 22691 & 22713 & 22702 & 23328 & 26273  \\ 
+    1000& 45872 & 43968 & 43807 & 44563 & 46780  \\
+    \hline
+\end{tabular}\\[1em]
+\begin{minipage}[t]{0.9\linewidth}
+    \caption{Using MATLAB and \texttt{ncx2inv} from MATLAB's statistics and machine learning toolbox.}
+    \label{tab:non_central_chi_2_times_matlab}
+\end{minipage}
+\end{subtable}
+
+
+\caption[Computational times for inverse non-central $ \chi^2 $ cumulative distribution]{The ratio of average computational times for evaluating the inverse non-central $ \chi^2 $ cumulative distribution function against the inverse Gaussian cumulative distribution function for several values of the non-centrality parameter $ \lambda $ and degrees of freedom $ \nu $.}
+\label{tab:non_central_chi_2_times}
+\end{table}
+
+You can generate the results from \Cref{tab:non_central_chi_2_times} yourself in MATLAB and Python. For MATLAB run the file \singlecodeline{non_central_chi_squared.m} to obtain
+\begin{verbatim}
+	               nu
+        ------------------------------
+lambda  |1      5       10      50 	
+--------------------------------------
+1       | 182   213     267     431 	
+5       | 136   675     801     1382 	
+10      | 927   879     951     1756 	
+50      | 2815  2009    2690    3946 	
+100     | 4951  5179    4781    6700 	
+200     | 9639  8702    9539    11054 	
+\end{verbatim} 
+and for Python run the file \singlecodeline{non_central_chi_squared.py} to obtain
+\begin{verbatim}
+nu       1    5    10   50
+lambda                    
+1        33   40   42   57
+5        43   50   50   63
+10       55   58   66   74
+50      105  108  108  151
+100     196  172  196  203
+200     248  252  250  245
+\end{verbatim}
+
+
+It is not particularly wise to try and directly approximate the inverse cumulative distribution function $ C^{-1}_{\nu}(\cdot;\lambda) $, as it is not particularly well scaled for various values of its parameters. Instead, if we define the function $ P_x(\cdot;y) $ as 
+\begin{equation}
+P_x(U;y) \coloneqq \sqrt{\dfrac{x}{4y}}\parens{ \dfrac{y}{x}  C^{-1}_{x}\parens{U; \dfrac{(1 - y)x}{y}} - 1}
+\end{equation}
+for $ x > 0 $ and $ 0 < y < 1  $, then we have 
+\begin{equation}
+C^{-1}_{\nu}(U;\lambda) = \lambda + \nu + 2 \sqrt{\lambda + \nu} P_\nu\parens{U;\dfrac{\nu}{\lambda + \nu}}.
+\end{equation}
+The reason this is preferable is because $ P_x(\cdot;y) $ is much better scaled for the range of possible parameters, where it has the limits
+\begin{align}
+P_x(U;y) & \xrightarrow{y\to 0} \Phi^{-1}(U) \\
+\shortintertext{and}
+P_x(U;y) & \xrightarrow{y\to 1} \dfrac{C^{-1}_x(U)}{2\sqrt{x}} - \dfrac{\sqrt{x}}{2},
+\end{align}
+where $ C^{-1}_\nu $, without the parameter $ \lambda $, is the inverse cumulative distribution function of the central $ \chi^2 $-distribution. We can see its convergence to these two limits in \Cref{fig:cir_update_factor_convergence_to_gaussian_both_limits}.
+
+\begin{figure}[h!tb]
+\centering
+\includegraphics[width=0.7\linewidth]{cir_update_factor_convergence_to_gaussian_both_limits}
+\caption{The limiting convergence of the non-central $ \chi^2 $-distribution.}
+\label{fig:cir_update_factor_convergence_to_gaussian_both_limits}
+\end{figure}
+
+We notice that $ P_x(\cdot;y) $ is not symmetric, but given it looks so similar to the Gaussian, we approximate it similarly. We again use a piecewise polynomial approximation using dyadic intervals. However, as it is not rotationally symmetric, we use one approximation in between 0 and $ \tfrac{1}{2} $, and a second between $ \tfrac{1}{2} $ and 1. 
+
+As we have a parametrised distribution for $ 0 < y < 1 $, we construct several approximations for a discrete set of different and equally spaced values of $ \sqrt{y} $, where the value for a specific value of $ y $ is obtained from linear interpolation in the value of $ \sqrt{y} $. 
+
+An polynomial approximation to the non-central $ \chi^2 $-distributions inverse cumulative distribution function, produced in the way we've highlighted, is implemented in \singlecodeline{approximate_non_central_chi_squared.py}
+and its use is demonstrated in the file \singlecodeline{approximate_non_central_chi_squared_demonstrations.py} with the function \singlecodeline{plot_non_central_chi_squared_polynomial_approximation}
+which produces the approximations shown in \Cref{fig:piecewise_polynomial_approximation_of_non_central_chi_squared}.
+
+\begin{figure}[htb]
+\centering
+\includegraphics[width=0.7\linewidth]{piecewise_polynomial_approximation_of_non_central_chi_squared}
+\caption{Several piecewise polynomial approximations using dyadic intervals.}
+\label{fig:piecewise_polynomial_approximation_of_non_central_chi_squared}
+\end{figure}
+
+Similar to before, we can compare the relative time taken between the exact function and our polynomial approximation using the function \singlecodeline{non_central_chi_squared_polynomial_approximation_timing}
+which outputs
+\begin{verbatim}
+nu       1    5    10   50
+lambda                    
+1       1.3  1.5  1.5  2.0
+5       1.5  1.7  1.7  2.2
+10      2.0  2.1  2.4  2.7
+50      3.7  3.9  3.9  5.2
+\end{verbatim}
+and a more comprehensive collection of results are presented in \Cref{tab:non_central_chi_2_times_python_approximation}. We can see from this that our Python implementation is usually slightly faster than the exact function when $ \nu $ and $ \lambda $ are both $ \order{1} $. However, as $ \lambda $ increases such that $ \lambda \gg 1 $ we can see that even our modest Python implementation is much faster. 
+
+\begin{table}[htb]
+\centering    
+\begin{tabular}{|r|rrrrr|}
+\multicolumn{1}{c}{\multirow{2}{*}{$ \lambda $}} & \multicolumn{5}{c}{$ \nu $} \\
+\cline{2-6}
+\multicolumn{1}{c|}{} & 1 &   5  &  10 &  50  & 100 \\
+\hline
+   1 &  1.2 &  1.5 &  1.5 &  2.1 &  2.7 \\
+   5 &  1.2 &  1.7 &  1.8 &  2.3 &  3.2 \\
+  10 &  1.2 &  2.2 &  2.3 &  2.6 &  3.7 \\
+  50 &  4.0 &  3.9 &  3.8 &  5.4 &  5.4 \\
+ 100 &  6.7 &  7.3 &  7.4 &  7.2 &  6.8 \\
+ 200 &  8.9 &  9.3 &  8.8 &  8.7 &  8.0 \\
+ 500 & 16.8 & 16.8 & 16.3 & 16.5 & 16.0 \\
+1000 & 17.4 & 17.4 & 15.9 & 16.6 & 17.8 \\
+\hline 
+\end{tabular}\\[1em]
+\caption{The relative time required in Python using \texttt{ncx2.ppf} from Scipy's \texttt{scipy.stats} against our polynomial approximation.}
+\label{tab:non_central_chi_2_times_python_approximation}
+\end{table}
+
+
+
+
+
+\clearpage
+\section{Monte Carlo simulations using the Euler-Maruyama scheme}
+
+We mentioned in \Cref{sec:when_would_i_use_approximate_random_variables} that random variables (and hence also approximate random variables) play a central role in Monte Carlo simulations, and we will elaborate a bit more on this here. There are many classical problems which can be described by what's called a \emph{first order ordinary differential equation}, which takes the form 
+\begin{align}
+\dv{x}{t} & = a(t, x), \\
+\shortintertext{and is often written as}
+\dd{x} & = a(t, x) \dd{t}. \label{eqt:first_order_ode}
+\end{align}
+Examples of problems taking the form of \Cref{eqt:first_order_ode} can be found in models for population growth, thermal cooling, circuit theory, and projectile motion. How these systems evolve is not at all random, but completely deterministic. 
+
+Naturally though, there are systems which are subject to random effects which influence how they evolve. Examples of systems experiencing random influences can be found in model from finance, dilute chemistry, and various branches of physics. If a system behaves randomly we say it is \emph{stochastic}, and these can regularly be described by using what's called a \emph{stochastic differential equation} of the form
+\begin{equation}
+\dd{X_t}  = a(t, X_t) \dd{t} + b(t, X_t) \dd{W_t}. \label{eqt:sde}
+\end{equation}
+The new term $ \dd{W_t} $ is the underlying stochastic process, where $ W_t $ is called a \emph{Brownian motion}. The most important thing about a Brownian motion is that between two times $ s $ and $ t $, with $ s < t $, the change $ W_t - W_s $ is a zero mean Gaussian random variable with variance $ t - s $. This means that over a time interval $ \Delta t $, the change in the  Brownian motion $ \Delta W_t $ can be expressed using a standard Gaussian random variable $ Z $ by $ \Delta W_t = \sqrt{\Delta t} Z $.
+
+When simulating a path described by \Cref{eqt:sde}, it is important not to forgetting that no two simulations of \Cref{eqt:sde} will be the same, as each path is subjected to unique random influences. 
+
+A popular and robust way to simulate processes described by \Cref{eqt:sde} up to  time $ T $ is to use \emph{the Euler-Maruyama scheme}, which makes the approximation
+\begin{equation}
+\Delta X_t \approx  a(t, X_t) \Delta t + b(t, X_t) \Delta W_t, \label{eqt:euler_maruyama_approximation}
+\end{equation}
+which gives rise to the Euler-Maruyama scheme 
+\begin{equation}
+\hat{X}_{n+1} = \hat{X}_n +  a(t_n, \hat{X}_n) \delta + b(t_n, \hat{X}_n) \sqrt{\delta} Z_n, \label{eqt:euler_maruyama_scheme}
+\end{equation}
+where we simulate from $ \hat{X}_0 \to \hat{X}_1 \to \hat{X}_2 \to \cdots \to \hat{X}_n \to \cdots \to \hat{X}_N $, using $ N $ equally spaced time increments $ t_n = n \delta $ where $ \delta = \tfrac{T}{N}$. 
+
+To estimate exactly where the final position $ X_T $ is expected to be, the Monte Carlo scheme uses $ M $ simulations to approximate
+\begin{equation}
+\conExp{X_T} \approx \conExp{\hat{X}_N} \approx \dfrac{1}{M} \sum^M \hat{X}_N.
+\end{equation}
+Performing all these $ M $ simulations, each requiring $ N $ random numbers, the amount of random numbers used can quickly become enormous, and generating them becomes the computational bottleneck. This is where our approximate random variables come in. Instead of the random variables $ Z_n $, which exactly follow the Gaussian distribution, we propose using approximate random variables $ \tilde{Z}_n $ and the modified version of the Euler-Maruyama scheme
+\begin{equation}
+\tilde{X}_{n+1} = \tilde{X}_n +  a(t_n, \tilde{X}_n) \delta + b(t_n, \tilde{X}_n) \sqrt{\delta} \tilde{Z}_n. \label{eqt:euler_maruyama_scheme_approximate_random_variables}
+\end{equation}
+
+Switching to the modified Euler-Maruyama scheme will give a considerable speed improvement, but it will introduce some error. Is there a way to benefit from the increased speed but without losing accuracy? Fortunately, there is an extension of regular Monte Carlo called \emph{multilevel Monte Carlo} which does just this, and the idea behind it is surprisingly simple. We suppose that in some setting we have the means to run simulations in some very high fidelity with a high computational cost, or a low fidelity with a low computational cost, where these are approximations to some exact quantity. By convention we denote these as \emph{fine} and \emph{coarse} simulations respectively.  The multilevel estimate uses the combination
+\begin{equation}
+\rlap{$\overbrace{\phantom{\mathbb{E}(X_{\mathrm{exact}}) \approx \mathbb{E}(X_{\mathrm{fine}})}}^{\mathclap{\text{Regular Monte Carlo}}}$} \mathbb{E}(X_{\mathrm{exact}}) \approx \underbrace{\mathbb{E}(X_{\mathrm{fine}}) = \mathbb{E}(X_{\mathrm{coarse}}) + \mathbb{E}(X_{\mathrm{fine}} - X_{\mathrm{coarse}})}_{\text{Multilevel Monte Carlo}}. \label{eqt:mlmc}
+\end{equation}
+
+
+If we inspect the portion marked regular Monte Carlo, everything is as one might expect, and we would estimate ($ \approx $) the exact quantity using the finest resolution possible. The interesting bit is the equality we've marked as the multilevel Monte Carlo. The fact that this is an equality means that the same accuracy as the regular Monte Carlo is achieved, and no accuracy is lost. So why change to the multilevel scheme? The multilevel scheme's first expectation $ \mathbb{E}(X_{\mathrm{coarse}}) $ is our new primary estimation tool, which we can see is made from coarse simulations, and so is computationally  cheaper, giving a speed improvement. The second expectation $ \mathbb{E}(X_{\mathrm{fine}} - X_{\mathrm{coarse}}) $ is the correction needed to adjust from a coarse simulation to a fine simulation, and is how the fine simulation's accuracy is maintained. This second expectation only requires a negligible number of simulations, and hence doesn't affect the overall cost. This is why the multilevel scheme has all the speed of a coarse simulation and the accuracy of a fine simulation. Using this multilevel Monte Carlo, the higher fidelity simulations are produced from the Euler-Maruyama scheme using the exact random numbers, and faster but lower fidelity simulations are produced using the approximate random numbers. We gain speed without losing accuracy.
+
+Usually the fine and coarse simulations differ by using smaller and larger time increments. Our approximate random variables present another way to boost speed without losing performance. Unfortunately, incorporating approximate random variables into a pre-existing regular Monte Carlo or multilevel Monte Carlo is not without some technical difficulties. Approximate random variables cannot be used for all simulations, there are limitations, and these are too mathematically technical to repeat here. For anyone looking to implement a  Monte Carlo scheme using them, we recommend reading some of the more advances material mentioned in \Cref{sec:where_can_i_learn_more}.
+
+
+
 
 \end{document}

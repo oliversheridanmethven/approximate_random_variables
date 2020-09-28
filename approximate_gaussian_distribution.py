@@ -114,16 +114,12 @@ def piecewise_polynomial_coefficients_in_half_interval(func, n_intervals, polyno
     return coefficients
 
 
-def construct_symmetric_piecewise_polynomial_approximation(func, n_intervals, polynomial_order):
+def construct_index_of_dyadic_interval(n_intervals):
     """
-    Constructs a symmetric piecewise polynomial approximation.
-    :param func: Function.
+    Construct a function which will return the dyadic indices.
     :param n_intervals: Int.
-    :param polynomial_order: Int.
     :return: Function.
     """
-
-    coefficients = piecewise_polynomial_coefficients_in_half_interval(func, n_intervals, polynomial_order)
     intervals = dyadic_intervals_in_half_interval(n_intervals)
     intervals_lower_values = [interval[0] for interval in intervals]
 
@@ -135,6 +131,20 @@ def construct_symmetric_piecewise_polynomial_approximation(func, n_intervals, po
         """
         # There are faster ways, but a simple search is good enough for Python.
         return array([(k for k, v in enumerate(intervals_lower_values) if i >= v).next() for i in u])
+
+    return index_of_dyadic_interval
+
+def construct_symmetric_piecewise_polynomial_approximation(func, n_intervals, polynomial_order):
+    """
+    Constructs a symmetric piecewise polynomial approximation.
+    :param func: Function.
+    :param n_intervals: Int.
+    :param polynomial_order: Int.
+    :return: Function.
+    """
+
+    coefficients = piecewise_polynomial_coefficients_in_half_interval(func, n_intervals, polynomial_order)
+    index_of_dyadic_interval = construct_index_of_dyadic_interval(n_intervals)
 
     def piecewise_polynomial_approximation(u):
         """

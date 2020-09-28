@@ -113,8 +113,6 @@
 
 %\hbadness=10000 % Supresses bad box warnings
 
-% Where to search for figures. 
-\graphicspath{{../figures/}{../figures/logos/}{../figures_remote/}{../figures/hardware/}{../figures/inverse_cdf/}{../figures/simd/}{../figures/scrambling/}{../figures/mlmc/}{../figures/qmlmc/}{../figures/quantised_normals/}{../papers/}{../figures/qmlmc/milstein/}{../figures/cir/}{../figures/fpmlmc/}{../figures/lay_report/}{../figures/misc/}}
 
 % Present the references in the order they are used.
 %\bibliographystyle{unsrtnat} % Sorted by order of use.
@@ -358,7 +356,7 @@
 % The nice headers and footers.
 \pagestyle{fancy}
 % Modifying the header and footer styles for chapters and sections. 
-\renewcommand{\sectionmark}[1]{\markboth{#1}{}}
+\renewcommand{\sectionmark}[1]{\markboth{#1}{#1}}
 
 % Specifying the headers and footers. 
 \fancyhf{}
