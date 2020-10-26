@@ -71,6 +71,16 @@ def construct_piecewise_constant_approximation(func, n_intervals):
     return piecewise_constant_approximation
 
 
+def rademacher_approximation(u):
+    """
+    Constructs Rademacher random variables.
+    :param u: Float.
+    :return: Float.
+    """
+    predicate = u >= 0.5
+    return 1.0 * predicate + -1.0 * np.logical_not(predicate)
+
+
 ##### Piecewise polynomial approximations #####
 
 def optimal_polynomial_coefficients(func, polynomial_order, a, b):
@@ -131,8 +141,10 @@ def construct_index_of_dyadic_interval(n_intervals):
         :param u: Array.
         :return: Array.
         """
+        if isinstance(u, float):
+            u = array([u])
         # There are faster ways, but a simple search is good enough for Python.
-        return array([(k for k, v in enumerate(intervals_lower_values) if i >= v).next() for i in u])
+        return array([next((k for k, v in enumerate(intervals_lower_values) if i >= v)) for i in u])
 
     return index_of_dyadic_interval
 
