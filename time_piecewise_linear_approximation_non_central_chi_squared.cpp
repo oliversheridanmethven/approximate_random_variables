@@ -36,7 +36,7 @@ int main(int argc, char **argv)
     clock_t run_time;
     double elapsed_time;
 
-//    printf("nu, lambda, approximate, exact");
+    printf("nu, lambda, approximate, exact");
     for (unsigned int lambda = 0; lambda < N_LAMBDAS; lambda++)
     {
         for (unsigned int nu = 0; nu < N_NUS; nu++)
@@ -45,7 +45,7 @@ int main(int argc, char **argv)
             {
                 nc[i] = lambdas[lambda];
             }
-//            printf("\n%f, %f, ", nus[nu], lambdas[lambda]);
+            printf("\n%f, %f, ", nus[nu], lambdas[lambda]);
             run_time = clock();
             for (unsigned int batch = 0; batch < n_batches; batch++)
             {
@@ -53,7 +53,7 @@ int main(int argc, char **argv)
             }
             elapsed_time = difftime(clock(), run_time) / CLOCKS_PER_SEC;
 //            printf("Average time for the approximate function: %g s.\n", elapsed_time / total_number_of_samples);
-//            printf("%g, ", elapsed_time / total_number_of_samples);
+            printf("%g, ", elapsed_time / total_number_of_samples);
 
             boost::math::non_central_chi_squared dist(nus[nu], lambdas[lambda]);
             run_time = clock();
@@ -66,7 +66,7 @@ int main(int argc, char **argv)
             }
             elapsed_time = difftime(clock(), run_time) / CLOCKS_PER_SEC;
 //            printf("Average time for the exact (Boost) function: %g s.\n", elapsed_time / total_number_of_samples);
-//            printf("%g", elapsed_time / total_number_of_samples);
+            printf("%g", elapsed_time / total_number_of_samples);
         }
     }
 }
