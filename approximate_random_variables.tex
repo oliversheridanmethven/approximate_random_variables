@@ -933,6 +933,188 @@ If we inspect the portion marked regular Monte Carlo, everything is as one might
 Usually the fine and coarse simulations differ by using smaller and larger time increments. Our approximate random variables present a separate way to boost speed without losing performance. Unfortunately, incorporating approximate random variables into a pre-existing regular Monte Carlo or multilevel Monte Carlo is not without some technical difficulties. Approximate random variables cannot be used for all simulations, there are limitations, and these are too mathematically technical to repeat here. For anyone looking to implement a  Monte Carlo scheme using them, we recommend reading some of the more advanced material mentioned in \Cref{sec:where_can_i_learn_more}.
 
 
+\todo[inline=true, caption={Check the next few sections.}]{The next few sections need to be checked and largely stripped of their references, as this is a simple getting started guide.}
+
+\subsection{Compiler optimisations}
+
+When discussing the Kahan compensated summation, we mentioned that an optimising compiler might interfere with the desired computation which was specified or described by the programmer's code. It is likely the case that if a practitioner is willing to explore the use of approximate random variables, low-precision floating-point numbers, programming in a low-level compiled language (e.g.\ C, C++, Fortran, etc.), and using SIMD and vector instructions, that they are trying to extract the maximum computational performance achievable, and so can be assumed to also be exploring various degrees of compiler optimisation. We would like to take this opportunity to warn against one possible and rather subtle optimisation the compiler might perform, which will ultimately violate the telescopic summation central to the multilevel Monte Carlo framework. 
+
+Suppose an implementation wishes to follow the DRY\index{DRY}\footnote{\textit{Don't repeat yourself} (DRY).} design pattern and has a modular structure using inlined functions 
+as shown in \Cref{code:c:compiler_optimisation_of_qmlmc}. (Such function inlining may be explicit, as in \Cref{code:c:compiler_optimisation_of_qmlmc}, or may be implicitly performed by the compiler under a sufficiently high optimisation flag\footnote{GCC\index{GCC} for example will inline functions used only once under \verb|-O1|, and will optimise unmarked small functions and perform partial inlining under \verb|-O2|.}). If in \Cref{code:c:compiler_optimisation_of_qmlmc} the functions \verb|difference| and \verb|difference_quantised| are inlined by the compiler, then the calculations may be optimised differently within  \verb|quantised_estimator| and \verb|quantised_estimator_correction|. The compiler could re-order the arithmetic, utilise FMA operations (recalling FMA operations work in infinite intermediate precision\footnote{``The operation \verb|fusedMultiplyAdd(x, y, z)| computes $ (\mathtt{x} \times \mathtt{y}) + \mathtt{z} $ as if with un-bounded range and precision, rounding only once to the destination format'', \citet[page~4, definition~2.1.28]{ieee2008ieee}.}), reorder the typecasting and arithmetic, or perform any number of optimisations. There is no guarantee that the optimisations performed on one inlined function be the same as another, thus these optimisations can results in the telescopic sums in \Cref{eqt:multilevel_monte_carlo_telescopic_sum,eqt:quantised_multilevel_monte_carlo_nested_reduced_precision_telescopic_sum} being violated, nullifying the multilevel Monte Carlo analysis. 
+
+
+
+
+\begin{lstfloat}[t]
+\begin{lstlisting}[style=C, captionpos=b, caption={[Compiler and hardware optimisation of inlined quantised multilevel Monte Carlo]Compiler and hardware optimisation of inlined quantised multilevel Monte Carlo.}, label={code:c:compiler_optimisation_of_qmlmc}]
+inline double difference_quantised(const double * brownian_path)
+{
+    /* Difference between levels using the approximate Euler-Maruyama scheme. */
+    double Payoff_fine_quantised, Payoff_coarse_quantised;
+    /* Computing the payoffs from the same underlying Brownian path. */
+    return Payoff_fine_quantised - Payoff_coarse_quantised;
+}
+
+inline double difference(const double * brownian_path)
+{
+    /* Difference between levels using the exact Euler-Maruyama scheme. */
+    double Payoff_fine, Payoff_coarse;
+    /* Computing the payoffs from the same underlying Brownian path. */
+    return Payoff_fine - Payoff_coarse;
+}
+
+double quantised_estimator(const double * brownian_path)
+{
+    return difference_quantised(brownian_path);
+}
+
+double quantised_estimator_correction(const double * brownian_path)
+{
+    return difference(brownian_path) - difference_quantised(brownian_path);    
+}
+\end{lstlisting}
+\end{lstfloat}
+
+As an example of how subtle this behaviour can be, let us consider the effect of implicit typecasting. For brevity we denote $ \hat{P}^{\mathrm{f}} $,  $ \hat{P}^{\mathrm{c}} $,  $ \fp{P}^{\mathrm{f}} $, and $ \fp{P}^{\mathrm{c}} $ by the floating point-variables \verb|P_f_32|, \verb|P_c_32|, \verb|P_f_16|, and \verb|P_c_16| respectively, where \verb|P_f_32| and \verb|P_c_32| are single-precision floats, and \verb|P_f_16| and \verb|P_c_16| are half-precision floats.  Suppose we implement the multilevel estimator and correction as in \Cref{code:c:compiler_implicit_typecasting}. On the surface, everything in \Cref{code:c:compiler_implicit_typecasting} seems mathematically correct, but when calculating the multilevel estimator \verb|estimator|, the fine and coarse path are differenced in low-precision, equivalent to using $ \fpMinus $. However, addition and subtraction in C are left-to-right associative, and hence the compiler can evaluate the multilevel correction \verb|correction| in a manner equivalent to  \verb|((P_f_32 - P_c_32) - P_f_16) + P_c_16|. This would mean all the variables are typecast to single-precision, and no half-precision difference is ever computed. We can see then, that this is equivalent to the Monte Carlo estimator
+\begin{equation}
+\conExp{\fp{P}^{\mathrm{f}} \fpMinus \fp{P}^{\mathrm{c}}} 
++ 
+\conExp{
+\parens{\hat{P}^{\mathrm{f}} -  \hat{P}^{\mathrm{c}}}
+-
+\parens{\fp{P}^{\mathrm{f}} -  \fp{P}^{\mathrm{c}}}
+}
+\neq
+\conExp{\hat{P}^{\mathrm{f}} -  \hat{P}^{\mathrm{c}}},
+\end{equation}
+which is not the intended multilevel Monte Carlo telescopic summation.
+The compiler can readily jumble the order of arithmetic and associativity under heavy enough optimisation settings, such as \verb|-Ofast|.
+Ensuring the telescoping summation is respected remains the responsibility of the programmer, and we acknowledge that spotting if or when it is violated can be a very tricky challenge. 
+
+\begin{lstfloat}[t]
+\begin{lstlisting}[style=C, captionpos=b, caption={[Implicit typecasting in finite-precision MLMC]Possible implicit typecasting within the finite-precision multilevel Monte Carlo framework.}, label={code:c:compiler_implicit_typecasting}]
+float P_f_32, P_c_32;
+half P_f_16, P_c_16;
+/* Performing the necessary path simulations. */
+half estimator = P_f_16 - P_c_16;
+float correction = P_f_32 -  P_c_32 - P_f_16 + P_c_16;
+\end{lstlisting}
+\end{lstfloat}
+
+
+Instinctively, an inexperienced programmer might speculate that such divergences of the actual computation from the desired computation will only be minor and likely inconsequential. However, an experienced programmer needn't look far to realise that code which is only slightly different from what was intended is typically the most dangerous, causing erroneous results which are difficult to identify and devilish to debug \citep[Chapter~27]{higham1993accuracy}. Furthermore, the wider the adoption of an approach, the sooner and more readily corner cases will arise, either from real world applications or carefully construed counter examples. Ultimately, we cannot stress enough the importance of being vigilant in working to exactly preserve the multilevel Monte Carlo telescoping summation. 
+
+\subsection{Coupling uniform random variables in different precisions}
+
+
+We have seen that the compiler can interfere with the intended functionality of the code. In addition to this, we would like to further highlight two other instances where an implementation may seemingly appear correct and sensible, but where extra care and vigilance needs to be taken to ensure correctness. Both of these considerations surround the low-precision uniform random numbers.
+
+
+\subsubsection{Low-precision uniform distributions when typecasting through intermediate precisions}
+
+
+For our multilevel Monte Carlo simulations we would like to couple our simulations. This can be done by the simulations sharing the same underlying Weiner process. If the Euler-Maruyama scheme is being implemented with the inverse transform method used to generate the Gaussian random variables, this is achieved by the simulations using the same sequence of underlying uniform random variables. 
+
+For simplicity, let us assume we are only trying to couple two path simulations. If these are both in the same precision, such as  double-precision Euler-Maruyama schemes using exact and approximate random variables, then both will use the same underlying uniforms, and all is well. However, let us now suppose that we are trying to drive paths at different precisions, such as a high and low-precision Euler-Maruyama scheme,  both using exact Gaussian random variables. Let the higher precision have $ r $\,bits for its mantissa, and let the lower precision have $ r' $, where $ r > r' > 0 $. For the multilevel correction, we would like our underlying uniform random number generator to produce a uniform random number, represented twice: once in high-precision, and the same number again in low-precision. Let us consider how ideally this would proceed in \Cref{algo:naive_generation_of_mixed_precision_uniforms}, and how a na\"{i}ve implementation of this may look in \Cref{code:c:naive_generation_of_mixed_precision_uniforms}.
+
+\begin{algorithm}[htb]
+\DontPrintSemicolon
+\KwIn{A random sample $ \omega $ (equivalent to a seed for a random number generator).}
+\KwOut{High and low-precision uniform random numbers.}
+Sample a uniform random number $ U \equiv U(\omega) $.\;
+Obtain a high-precision representation $ \fp[r]{U} $ of $ U $.\;
+Obtain a low-precision representation $ \fp[r']{U} $ of $ U $.\;
+\caption[Mixed precision uniform random number samples]{Obtaining two  varying precision representations of an underlying uniform random variable.}
+\label{algo:naive_generation_of_mixed_precision_uniforms}
+\end{algorithm}
+
+\begin{lstfloat}[htb]
+\begin{lstlisting}[style=C, captionpos=b, caption={[A na\"{i}ve implementation of \Cref{algo:naive_generation_of_mixed_precision_uniforms}]A na\"{i}ve implementation of \Cref{algo:naive_generation_of_mixed_precision_uniforms} for producing coupled and varying precision uniform random variables for the multilevel Monte Carlo correction term.}, label={code:c:naive_generation_of_mixed_precision_uniforms}]
+float u_32 = uniform_random_number_generator();
+half u_16 = u_32;
+\end{lstlisting}
+\end{lstfloat}
+
+\Cref{algo:naive_generation_of_mixed_precision_uniforms} is evidently the desired procedure for producing our multilevel correction, and at first sight \Cref{code:c:naive_generation_of_mixed_precision_uniforms} appears a valid implementation. To see where the pitfall lies in this implementation, we will need to dig slightly deeper into the uniform random number generator. For more information on uniform random number generation we recommend \citet{gentle2005random}, \citet{glasserman2013monte}, \citet{tezuka1995uniform}, and \citet{knuth2014art}.
+
+Many uniform random number generators\footnote{%
+A similar procedure also occurs for low-discrepancy sequences producing quasi-random numbers. Examples of low-discrepancy sequences include; Halton\index{Halton sequences}, 
+Hammersley\index{Hammersley sequences},
+Kronecker\index{Kronecker sequences} \citep[1.1.53]{iaco2015low},
+Richtmyer\index{Richtmyer sequences} \citep{ramamoorthy2008low},
+Ramshaw \citep{ramshaw1981discrepancy},
+Lapeyre-Pag\`{e}s\index{Lapeyre-Pages sequences@{Lapeyre-Pag\`{e}s sequences}} \citep[2.C.4.3]{bouleau1994numerical},
+Niederrieter\index{Niederrieter sequences}, 
+Sobol\index{Sobol sequences}, 
+Faure\index{Faure sequences}, 
+and van der Corput\index{van der Corput sequences} \citep{gentle2005random,tezuka1995uniform,glasserman2013monte,bouleau1994numerical}.}
+proceed by constructing a sequence of integers $ \{m_1, m_2, \ldots \} $ modulo a very large maximum number $ M $ (typically one less than a power of 2), where the integer then is mapped to the range $ [0, 1) $ by dividing by $ M $. As the random number generators are constructed to have extremely long periods, they typically have some large state (or state vector), and support values of $ M $ which are frequently greater than $ 2^{32} $. When scaling a sequence value $ m $ to $ [0, 1) $ by dividing by $ M $, to avoid losing precision, the two values of $ m $ and $ M $ are typically converted to floating-point numbers first, and then the division performed on the two floats. As the integer sizes are typically quite large, these are first typecast to double-precision floating-point data-types, and then a floating-point division operation is performed. This means that a uniform random number generators might typically have a function signature resembling that depicted in \Cref{code:c:typical_uniform_rng_function_signature}. As an example, the standard uniform random number generator from GSL \verb|gsl_rng_uniform| matches the function signature from \Cref{code:c:typical_uniform_rng_function_signature}, as does the equivalent NAG function \verb|nag_random_continuous_uniform|\footnote{The function \verb|nag_random_continuous_uniform| has been replaced by \verb|nag_rand_basic| and \verb|nag_rand_uniform| in recent versions of the \nag library.}.
+
+\begin{lstfloat}[htb]
+\begin{lstlisting}[style=C, captionpos=b, caption={[A typical uniform random number generator function signature]A typical uniform random number generator function signature.}, label={code:c:typical_uniform_rng_function_signature}]
+double uniform_random_number_generator(void)
+{
+    static unsigned long int m, M; 
+    // Compute the sequence value m and scale to [0, 1) by dividing by M.
+    return (double) m / (double) M;
+}
+\end{lstlisting}
+\end{lstfloat}
+
+We can see from this consideration that the usual data-type output by uniform random number generators can be expected to be a double-precision floating-point value. If we then incorporate the function signature from \Cref{code:c:typical_uniform_rng_function_signature} into the implementation in \Cref{code:c:naive_generation_of_mixed_precision_uniforms}, we can see that the uniform random number generator \verb|uniform_random_number_generator| will output a \verb|double|. This is then implicitly typecast to a single-precision \verb|float| when assigning a value to \verb|u_32|. Then, when assigning a value to \verb|u_16|, the single-precision \verb|float| is then typecast a second time from a \verb|float| down to a half-precision \verb|half|. To show why this is problematic, we now need to consider how the uniforms for the new multilevel Monte Carlo estimator will be produced, which will likely be equivalent to \Cref{code:c:naive_generation_of_low_precision_uniforms}.
+
+\begin{lstfloat}[htb]
+\begin{lstlisting}[style=C, captionpos=b, caption={[Producing low-precision uniform random variables]Producing low-precision uniform random variables for the new multilevel Monte Carlo estimator.}, label={code:c:naive_generation_of_low_precision_uniforms}]
+half u_16 = uniform_random_number_generator();
+\end{lstlisting}
+\end{lstfloat}
+
+We can see from \Cref{code:c:naive_generation_of_low_precision_uniforms} that the half-precision uniforms are now obtained directly by typecasting from \verb|double| to \verb|half|, without passing through the intermediate \verb|float| format. Thus we can see that in the multilevel Monte Carlo estimator, the low-precision cheap simulations are produced by $ \fpRound[r']{U} $, whereas if we use \Cref{code:c:naive_generation_of_mixed_precision_uniforms} then in the correction term they are produced by $ \fpRound*[r']{\fpRound[r]{U}} $. The subtle point here is that these are not the same distribution, and thus are violating the telescoping summation central to the multilevel Monte Carlo framework. 
+
+Two distributions can differ drastically if there is a small decrement in the precision in going from $ r $ to $ r' $. As an example, consider the set of representable values in the range $ (\tfrac{1}{2}, 1) $ for the precision levels $ r $ and $ r' $ when $ r = r' + 1 $, as depicted in \Cref{fig:varying_precision_uniform_distributions}. We can see the impact of the round to nearest even rounding mode causes the two distributions to differ considerably. Based on these considerations, the correct way to implement \Cref{algo:naive_generation_of_mixed_precision_uniforms} is by \Cref{code:c:improved_generation_of_mixed_precision_uniforms} rather than  \Cref{code:c:naive_generation_of_mixed_precision_uniforms}. 
+
+\begin{figure}[htb]
+\centering
+\includegraphics[]{varying_precision_uniform_distributions}
+\caption[Representable floating-point values in two different precisions]{The representable floating-point values in the range  $ (\tfrac{1}{2}, 1) $ for precisions $ r $ and $ r' $ with $ r = r' + 1 $. The even numbers are denoted by solid markers (\CIRCLE), and odd numbers by hollow markers (\Circle). We indicate the probability density functions for each value, indicating the contributions for $ \fpRound*[r']{\fpRound[r]{U}} $ for an even and odd value.}
+\label{fig:varying_precision_uniform_distributions}
+\end{figure}
+
+
+
+\begin{lstfloat}[htb]
+\begin{lstlisting}[style=C, captionpos=b, caption={[A better implementation of \Cref{algo:naive_generation_of_mixed_precision_uniforms}]An improved implementation of \Cref{algo:naive_generation_of_mixed_precision_uniforms} for producing coupled and varying precision uniform random variables for the multilevel Monte Carlo correction term.}, label={code:c:improved_generation_of_mixed_precision_uniforms}]
+double u_64 = uniform_random_number_generator();
+float u_32 = u_64;
+half u_16 = u_64;
+\end{lstlisting}
+\end{lstfloat}
+
+The reason this is particularly important concerns low-precision SIMD implementations. It is crucial for a performant multilevel simulation using approximate random variables that input vectors to $ \tilde{\Phi}^{-1}(\cdot) $ contain the same data-type as the output. 
+
+This is a very subtle implementation pitfall, and the risk of this is compounded by using an optimising compiler. If a compiler is optimising heavily enough, and desires to keep the number of registers used to a minimum, then a compiler may optimise \Cref{code:c:improved_generation_of_mixed_precision_uniforms} into  \Cref{code:c:naive_generation_of_mixed_precision_uniforms}. Ensuring this does not occur, (or at least is not unknowingly performed), is the responsibility of the programmer. 
+
+
+\subsubsection{Overflow resulting from low-precision typecasting}
+
+There is a second risk present when typecasting high-precision uniform random variables down to a low-precision, which is manifestly present if a practitioner reduces the precision without also switching to approximate random variables. The issue is that the singularities of \PhiInverse become attainable with an appreciable probability when the uniform random numbers are typecast to a low-precision. 
+
+To make this point clearer, we recall that for the Gaussian distribution, \PhiInverse has singularities at $ \{\pm 0, 1\} $, for which it is typical for library implementations of \PhiInverse to return either of the floating-point values NaN or $ \pm\infty $. Encountering either of these is likely to contaminate any Monte Carlo calculation. When the floating-point value is typecast down to \verb|half| from either \verb|double| or \verb|float|, then for IEEE 16-\si{\bit} half-precision floating-point variables, there is a 0.024\% chance\footnote{For an IEEE 16-\si{\bit} half-precision floating-point number, 10\,bits are reserved for the mantissa, meaning the half-precision value just below 1 is $ 1.1111111111_2\times2^{-1} \approx 0.999511_{10}\ldots $, and hence the probability of rounding up to 1 is  $ \tfrac{1 - 0.999511}{2} = 0.000244\ldots$} a uniform random variable $ U \sim \mathcal{U}([0,1)) $ will be round in the typecasting to the value 1. Thus typecasting to \verb|half| changes the range of $ U $ from $ [0, 1) \to [0, 1] $.
+
+If our low-precision simulations are using approximate random number distributions which are non-singular on the domain $ [0, 1] $, then this result from typecasting presents no problem. However, if a practitioner only reduces the precision without introducing approximate random variables, instead choosing to maintain an exact and singular implementation of \PhiInverse, then very quickly they will encounter singular Gaussian random variables. Our framework utilising approximate random variables circumvents this problem. However, if a practitioner or application should remain averse to using approximate random numbers, then they will need to decide how to try and circumvent this issue. One method we propose to mediating this is that if the typecast number produces 1, instead compute the associated Gaussian random variable using the inverse of the complementary cumulative distribution function, as demonstrated in \Cref{code:c:gaussian_random_variables_using_inverse_complementary_cdf}.
+
+
+\begin{lstfloat}[htb]
+\begin{lstlisting}[style=C, captionpos=b, caption={[Compute Gaussian random variable using the inverse complementary CDF]Computing a low-precision Gaussian random variable using the inverse complementary CDF.}, label={code:c:gaussian_random_variables_using_inverse_complementary_cdf}]
+bool non_singular = u_16 != 1.0f16;
+u_16 = non_singular ? u_16 : 1.0 - u_64;
+z_16 = uniform_to_gaussian_16(u_16);
+z_16 = non_singular ? z_16 : -z_16; 
+\end{lstlisting}
+\end{lstfloat}
+
+
+
 
 
 \end{document}

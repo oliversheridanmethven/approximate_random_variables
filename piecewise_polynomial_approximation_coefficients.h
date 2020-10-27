@@ -7,6 +7,8 @@
 //      Coefficients for a piecewise polynomial approximation to
 //      the Gaussian's inverse cumulative distribution function.
 
+#include "piecewise_polynomial_approximation.h"
+
 #ifndef APPROXIMATE_RANDOM_VARIABLES_PIECEWISE_POLYNOMIAL_APPROXIMATION_COEFFICIENTS_H
 
 #define TABLE_SIZE 16
