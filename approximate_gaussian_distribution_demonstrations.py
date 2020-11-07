@@ -44,7 +44,7 @@ def piecewise_constant_approximation_of_gaussian_timing():
     total_number_of_samples = samples_in_batch * number_of_batches
     input_values = uniform_numbers(samples_in_batch)
     functions = {'exact': inverse_gaussian_cdf, 'approximate': approximations.construct_piecewise_constant_approximation(inverse_gaussian_cdf, n_intervals)}
-    for func_name, func in functions.iteritems():
+    for func_name, func in functions.items():
         start_time = timer()
         for batch in range(number_of_batches):
             func(input_values)
@@ -73,7 +73,7 @@ def piecewise_constant_polynomial_of_gaussian_timing():
     total_number_of_samples = samples_in_batch * number_of_batches
     input_values = uniform_numbers(samples_in_batch)
     functions = {'exact': inverse_gaussian_cdf, 'approximate': approximations.construct_symmetric_piecewise_polynomial_approximation(inverse_gaussian_cdf, n_intervals, polynomial_order)}
-    for func_name, func in functions.iteritems():
+    for func_name, func in functions.items():
         start_time = timer()
         for batch in range(number_of_batches):
             func(input_values)

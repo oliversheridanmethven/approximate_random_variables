@@ -58,7 +58,7 @@ def non_central_chi_squared_polynomial_approximation_timing():
     df = pd.DataFrame(res)
     df.index = df.index.rename('lambda')
     df.columns = df.columns.rename('nu')
-    print df
+    print(df)
 
 
 if __name__ == '__main__':
